@@ -98,7 +98,7 @@ def interpWindow(line, z, dv, ddv):
 
 #main function 
 
-def main(cube, x, y, z, lines, template_spec):
+def main(cube, x, y, z, lines, template_spec, outpath):
 
     lines =lines # list of lines to interpolate, in rest-frame wavelength
     z = z # fiducial redshift
@@ -136,7 +136,7 @@ def main(cube, x, y, z, lines, template_spec):
     
         flux[:,yi,xi] = spec-model*ratio_sm_new
 
-    cube.write('/Users/charishall/CASSI_26/J0015/J0015_vac_SUBBED.fits',  savemask='none')
+    cube.write(outpath,  savemask='none')
 
 
 
@@ -147,4 +147,4 @@ def main(cube, x, y, z, lines, template_spec):
                 4341.692, 4687.015, 4862.683, 4960.295, 5008.240])
 
 
-#main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source , lines= lines, template_spec= 'path to median template spectrum of QSO')
+#main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source , lines= lines, template_spec= 'path to median template spectrum of QSO', outpath = 'output directory + filename')
