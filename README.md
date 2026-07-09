@@ -1,4 +1,4 @@
-# CASSI_26
+# CASSI_26 -> stacking MUSE datacubes
 
 
 
