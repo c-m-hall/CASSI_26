@@ -1,0 +1,3 @@
+[submodule "module-crop"]
+    path = module-crop
+    url = https://github.com/c-m-hall/CASSI_26/main
