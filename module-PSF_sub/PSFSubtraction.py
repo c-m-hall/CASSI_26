@@ -98,9 +98,12 @@ def interpWindow(line, z, dv, ddv):
 
 #main function 
 
-def main(cube, x, y, z, lines, template_spec, outpath):
+def main(cube, x, y, z, template_spec, outpath):
 
-    lines =lines # list of lines to interpolate, in rest-frame wavelength
+    #input list of lines to interpolate, in rest-frame wavelength
+
+    lines = np.array([3426.863, 3727.092, 3729.875, 3869.86, 3969.591, 
+                4341.692, 4687.015, 4862.683, 4960.295, 5008.240])
     z = z # fiducial redshift
 
     # load data and calculate r from QSO center
@@ -141,10 +144,7 @@ def main(cube, x, y, z, lines, template_spec, outpath):
 
 
 #example usage 
+'''
 
-#input list of lines to interpolate, in rest-frame wavelength
-#lines = np.array([3426.863, 3727.092, 3729.875, 3869.86, 3969.591, 
-                4341.692, 4687.015, 4862.683, 4960.295, 5008.240])
-
-
-#main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source , lines= lines, template_spec= 'path to median template spectrum of QSO', outpath = 'output directory + filename')
+main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source , template_spec= 'path to median template spectrum of QSO', outpath = 'output directory + filename')
+'''
