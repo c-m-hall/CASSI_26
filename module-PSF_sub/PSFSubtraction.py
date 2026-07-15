@@ -124,7 +124,7 @@ def main(cube, x, y, z):
 
     # load median spectrum as QSO template
     # small amount of smoothing is applied to reduce the noise in the template
-    template_spec = cube.aperture((xc,yc), radius = 2,unit_center=None, unit_radius=None, is_sum=True) #setting unit_radius and unit_center = None is default for pixels 
+    template_spec = cube.aperture((yc,xc), radius = 2,unit_center=None, unit_radius=None, is_sum=True) #setting unit_radius and unit_center = None is default for pixels 
     
     wave_model,med_spec = np.loadtxt(template_spec,unpack=True)
     model = interp1d(np.concatenate(([4300],wave_model,[9700])), np.concatenate(([0],med_spec,[0])))(wave)
