@@ -146,7 +146,7 @@ def psf_sub_main(cube, x, y, z):
         flux[:,yi,xi] = spec-model*ratio_sm_new
 
     cube.write(outpath,  savemask='none')
-
+    return outpath
 
 
 #example usage 
