@@ -98,13 +98,16 @@ def interpWindow(line, z, dv, ddv):
 
 #main function 
 
-def main(cube, x, y, z, outpath):
+def main(cube, x, y, z):
 
     #input list of lines to interpolate, in rest-frame wavelength
 
     lines = np.array([3426.863, 3727.092, 3729.875, 3869.86, 3969.591, 
                 4341.692, 4687.015, 4862.683, 4960.295, 5008.240])
     z = z # fiducial redshift
+
+ 
+    outpath = cube.replace('.fits', '_vac.fits')
 
     # load data and calculate r from QSO center
     #keep var in case we want to use it for weighting in the future
