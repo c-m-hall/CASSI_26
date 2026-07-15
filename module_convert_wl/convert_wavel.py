@@ -51,7 +51,7 @@ def air2vac(wvl,precision=1.0e-12,maxiter=100):
 
 
 
-def main(cubename, dir):
+def convert_wl_main(cubename, dir):
     #fieldname = sys.argv[1]
     datapath = dir + cubename
     outpath = dir + cubename.replace('.fits', '_vac.fits')
