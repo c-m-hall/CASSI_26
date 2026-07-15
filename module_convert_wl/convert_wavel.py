@@ -97,7 +97,7 @@ def convert_wl_main(cubename, dir):
     hdul.writeto(outpath, overwrite=True)
 
     hdul.close()
-   
+    return outpath
 
 
 #example usage 
