@@ -150,5 +150,5 @@ def main(cube, x, y, z):
 #example usage 
 '''
 
-main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source , outpath = 'output directory + filename')
+main('cubepath', x_center(pixel coord), y_center(pixel_coord), z=redshift of source)
 '''
