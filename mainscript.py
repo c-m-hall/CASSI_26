@@ -17,10 +17,10 @@ from module_psf_sub.PSFSubtraction import psf_sub_main
 OII_REST = 3728.48
 
 # output subdirectories for each pipeline stage
-DIR_WLCONV = '/Users/charishall/CASSI_26/'
-DIR_PSFSUB = '/Users/charishall/CASSI_26/'
-DIR_CROP   = '/Users/charishall/CASSI_26/'
-DIR_FINAL  = '/Users/charishall/CASSI_26/'
+DIR_WLCONV = '/Users/charishall/CASSI_26/converted_wl/'
+DIR_PSFSUB = '/Users/charishall/CASSI_26/psf_subbed/'
+DIR_CROP   = '/Users/charishall/CASSI_26/cropped/'
+DIR_FINAL  = '/Users/charishall/CASSI_26/resampled/'
 
 
 
