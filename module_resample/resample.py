@@ -151,7 +151,7 @@ def process_field(cube, wave_native, err_cube, pixscale_arcsec, z,
 
 #main function to run the pipeline on a single field
 
-def main(z,cubepath, pixscale):
+def resample_main(z,cubepath, pixscale):
 
     import numpy as np
     from scipy import ndimage
