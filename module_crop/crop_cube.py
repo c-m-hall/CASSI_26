@@ -1,5 +1,6 @@
 # Crop a box centered on (y_pix, x_pix)
 
+from astropy.io import fits
 
 
 
