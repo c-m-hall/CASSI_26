@@ -1,4 +1,9 @@
 
+import numpy as np
+import sys
+from scipy.interpolate import interp1d
+from astropy.io import fits
+
 
 #function to convert wair to wvac
 
