@@ -98,7 +98,7 @@ def interpWindow(line, z, dv, ddv):
 
 #main function 
 
-def main(cube, x, y, z):
+def psf_sub_main(cube, x, y, z):
 
     #input list of lines to interpolate, in rest-frame wavelength
 
