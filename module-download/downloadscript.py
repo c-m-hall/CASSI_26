@@ -11,6 +11,20 @@ import numpy as np
 
 
 
+def get_cube_paths(name, pairs_table, cube_dir):
+    """
+    Look up all cube files associated with a given QSO name,
+    using the pairs table you wrote out earlier (muse_x_milliquas_pairs.fits).
+
+    Adjust the column names below to match your actual pairs table schema.
+    """
+    rows = pairs_table[pairs_table['Name'] == name]
+    
+    return [Path(cube_dir) / fname for fname in rows['cube_filename']]
+
+
+
+
 def get_z(path ='path/to/sample.fits file'):
     with fits.open(path) as hdul:
         header = hdul[1].header
