@@ -63,7 +63,7 @@ def crop_cube(x_center, y_center, cubepath, spatialcrop_pix, lam_obs, dwave):
     hdul.writeto(output_filename, overwrite=True)
     hdul.close()
 
-    return final_cube 
+    return output_filename 
 
 
 #example usage
