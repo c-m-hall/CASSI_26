@@ -19,14 +19,14 @@ OII_REST = 3728.48
 # output subdirectories for each pipeline stage
 DIR_WLCONV = '/Users/charishall/CASSI_26/'
 DIR_PSFSUB = '/Users/charishall/CASSI_26/'
-DIR_CROP   = 'o/Users/charishall/CASSI_26/'
+DIR_CROP   = '/Users/charishall/CASSI_26/'
 DIR_FINAL  = '/Users/charishall/CASSI_26/'
 
 
 
 
 def move_to(path, dest_dir):
-    """Relocate a stage's output into its staged subdirectory; return new path."""
+    """Relocate step's output into its staged subdirectory; return new path."""
     new_path = os.path.join(dest_dir, os.path.basename(path))
     shutil.move(path, new_path)
     return new_path
@@ -52,7 +52,6 @@ def main(sample_path='sample.fits', pairs_path='muse_x_milliquas_pairs.fits',
                 x, y = convert_coords(ra, dec, cubepath)
 
                 # 1. air-to-vacuum wavelength correction
-                # convert_wl_main takes (cubename, dir) separately, not a joined path
                 cube_dirname = os.path.dirname(cubepath) + '/'
                 wlconv_path = convert_wl_main(cube_base, cube_dirname)
                 wlconv_path = move_to(wlconv_path, DIR_WLCONV)
