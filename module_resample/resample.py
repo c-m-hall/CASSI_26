@@ -1,6 +1,12 @@
 #resample 
 
-
+import numpy as np
+from scipy import ndimage
+import astropy.units as u
+from astropy.cosmology import FlatLambdaCDM
+from astropy.io import fits
+from spectres import spectres
+from mpdaf.obj import Cube
 
 # --- constants and configuration ---
 c_kms = 299792.458                       # speed of light [km/s]
@@ -153,14 +159,7 @@ def process_field(cube, wave_native, err_cube, pixscale_arcsec, z,
 
 def resample_main(z,cubepath, pixscale):
 
-    import numpy as np
-    from scipy import ndimage
-    import astropy.units as u
-    from astropy.cosmology import FlatLambdaCDM
-    from spectres import spectres
-    from mpdaf.obj import Cube
-    import astropy.io.fits as fits
-
+  
 
 
     lam_line_obs = oII_rest * (1 + z)    # observed [OII] center
@@ -187,6 +186,7 @@ def resample_main(z,cubepath, pixscale):
     #Generate the native wavelength array
     wave_native = crval + (pixel_indices + 1 - crpix) * cdelt
 
+    f_v, f_v_err, v_grid = process_field(cube_data, wave_native, cube_err, pixscale, z)
 
     primary_hdu = fits.PrimaryHDU(data=f_v)
     primary_hdu.name = "DATA"  
@@ -216,7 +216,7 @@ def resample_main(z,cubepath, pixscale):
 
 
     hdul.close()
-    return output_filename + "{} processed successfully."
+    return output_filename 
 
 
 
