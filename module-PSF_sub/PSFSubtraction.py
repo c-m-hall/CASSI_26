@@ -107,7 +107,7 @@ def main(cube, x, y, z):
     z = z # fiducial redshift
 
  
-    outpath = cube.replace('.fits', '_vac.fits')
+    outpath = cube.replace('.fits', '_PSFSUBBED.fits')
 
     # load data and calculate r from QSO center
     #keep var in case we want to use it for weighting in the future
