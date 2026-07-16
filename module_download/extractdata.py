@@ -35,7 +35,7 @@ def get_z(path ='path/to/sample.fits file'):
 
         
 
-def convert_coords(ra, dec, cubepath)
+def convert_coords(ra, dec, cubepath):
     
     # Load WCS
     with fits.open('cubepath') as hdul:
