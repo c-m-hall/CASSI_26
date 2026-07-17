@@ -12,11 +12,11 @@ crops, and resamples each one onto a common grid.
 
 One folder per pipeline step:
 
-  - build_sample.py       find targets (cross-match Milliquas x ESO archive)
+  build_sample.py  find targets (cross-match Milliquas x ESO archive)
 
-  - module_download/       download the matched cubes
+  - module_download/ download the matched cubes
 
-  - module_convert_wl/     air-to-vacuum wavelength calibration
+  - module_convert_wl/   air-to-vacuum wavelength calibration
 
   - module_psf_sub/        PSF / continuum subtraction
 
