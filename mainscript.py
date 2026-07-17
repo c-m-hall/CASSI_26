@@ -1,19 +1,18 @@
-
 #with compiled sample as 'sample.fits'
 
+import os
+import shutil
 
 from astropy.table import Table
 
 #import all modules scripts
-
-from module_download.downloadscript import get_cube_paths, get_z, convert_coords
+from module_download.extractdata import get_cube_paths, get_z, convert_coords
 from module_crop.crop_cube import crop_cube
 from module_resample.resample import resample_main
 from module_convert_wl.convert_wavel import convert_wl_main
 from module_psf_sub.PSFSubtraction import psf_sub_main
 
-
-
+C_KMS = 299792.458
 OII_REST = 3728.48
 
 # output subdirectories for each pipeline stage
@@ -23,10 +22,9 @@ DIR_CROP   = '/Users/charishall/CASSI_26/cropped/'
 DIR_FINAL  = '/Users/charishall/CASSI_26/resampled/'
 
 
-
-
 def move_to(path, dest_dir):
     """Relocate step's output into its staged subdirectory; return new path."""
+    os.makedirs(dest_dir, exist_ok=True)
     new_path = os.path.join(dest_dir, os.path.basename(path))
     shutil.move(path, new_path)
     return new_path
