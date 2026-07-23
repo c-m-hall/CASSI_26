@@ -28,6 +28,8 @@ from astropy.table import Table
 ESO_TAP = "https://archive.eso.org/tap_obs"
 
 
+
+#dataclass to specify size budget, field indices(or number of fields), saved sample fits name, the destination folder for the downloads, and the pairs fits file
 @dataclass
 class Config:
     sample: str = "muse_x_milliquas_sample.fits"
@@ -40,6 +42,11 @@ class Config:
     max_gb: float = 25.0     # size budget for a real run
     download: bool = False   # set True to actually fetch
 
+
+
+#Loads muse_x_milliquas_sample.fits, tags each row with its position (idx) in that file, then picks which fields to actually fetch:
+#If we gave explicit field_indices (e.g. [0, 5, 12]), it grabs exactly those rows
+#Otherwise it sorts by total individual-cube exposure time and takes the top n_fields
 
 def select_fields(cfg: Config):
     """Chosen sample rows, with an `idx` column giving each row's position
@@ -58,6 +65,7 @@ def select_fields(cfg: Config):
     return sample[: cfg.n_fields]
 
 
+#each chosen row has a dp_ids column — a ;-separated string of ESO archive dataset IDs (one field can have several cubes/pointings)-> function to unpack that
 def dp_ids_for_fields(chosen):
     """De-duplicated, order-preserving list of dp_ids from the chosen rows,
     plus {dp_id: Name} so downloaded files can be traced back to their QSO,
@@ -76,7 +84,7 @@ def dp_ids_for_fields(chosen):
     n_empty = int(np.sum(chosen["n_cubes_indiv"] == 0))
     return ids, name_for_dpid, n_empty
 
-
+#tells us how big each file is 
 def estimated_sizes_gb(dp_ids, chunk=100):
     """{dp_id: size_GB} from ESO ObsCore access_estsize (kB). Metadata only."""
     import pyvo
@@ -92,7 +100,7 @@ def estimated_sizes_gb(dp_ids, chunk=100):
             sizes[str(r["dp_id"])] = float(r["access_estsize"]) / 1e6  # kB -> GB
     return sizes
 
-
+#Walks the dp_id list in order, adding up sizes, and stops queuing once the next cube would push the running total over max_gb. 
 def apply_budget(dp_ids, sizes, max_gb):
     """Keep cubes in order until adding the next one would exceed max_gb."""
     kept, total = [], 0.0
@@ -115,6 +123,10 @@ def find_local_file(dp_id, dest):
     matches = list(Path(dest).glob(f"*{dp_id}*"))
     return matches[0] if matches else None
 
+
+
+#Once files are on disk, this looks up each dp_id's actual local filename (find_local_file) 
+#builds a (Name, cube_filename) table, and writes it to muse_x_milliquas_pairs_local.fits
 
 def build_local_pairs_table(dp_ids, name_for_dpid, dest):
     """(Name, cube_filename) rows for every dp_id actually found on disk --
