@@ -30,8 +30,9 @@ def move_to(path, dest_dir):
     return new_path
 
 
-def main(sample_path='sample.fits', pairs_path='muse_x_milliquas_pairs.fits',
-         cube_dir='.', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2):
+def main(sample_path='muse_x_milliquas_sample.fits',
+         pairs_path='muse_x_milliquas_pairs_local.fits',
+         cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2):
 
     sample = Table.read(sample_path)
     pairs = Table.read(pairs_path)
