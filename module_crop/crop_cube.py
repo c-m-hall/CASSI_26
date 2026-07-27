@@ -84,3 +84,63 @@ dwave = (2 * vel_kms / c_kms) * lam_obs
 
 cropped_cube = crop_cube(x_center, y_center, cubepath, spatialcrop_pix, lam_obs, dwave)
 """
+
+
+
+
+def crop_mask(x_center, y_center, maskpath, spatialcrop_pix, lam_obs, dwave):
+    """Crop a 3D mask (single-extension, 0/1, no variance) to the exact same
+    spatial box + wavelength window that crop_cube uses on the science cube.
+    
+    Call with the same x_center/y_center/spatialcrop_pix/lam_obs/dwave passed to crop_cube on the corresponding *_MASK3D.fits file, so the crop
+    lines up with the cropped science cube.
+    """
+    sp_crop_size = spatialcrop_pix / 2
+
+    with fits.open(maskpath) as hdul:
+        data = hdul[0].data
+        header = hdul[0].header
+
+        y_min = int(max(0, y_center - sp_crop_size))
+        y_max = int(min(data.shape[1], y_center + sp_crop_size))
+        x_min = int(max(0, x_center - sp_crop_size))
+        x_max = int(min(data.shape[2], x_center + sp_crop_size))
+
+        sp_cropped = data[:, y_min:y_max, x_min:x_max]
+
+        crval3 = header["CRVAL3"]
+        cdelt3 = header.get("CD3_3", header.get("CDELT3"))
+        if cdelt3 is None:
+            raise KeyError(
+                f"{maskpath}: neither CD3_3 nor CDELT3 found in header; "
+                "cannot determine spectral pixel scale."
+            )
+        crpix3 = header["CRPIX3"]
+
+        lambda_0_pixel = ((lam_obs - crval3) / cdelt3) + (crpix3 - 1)
+        deltalambda_pixel = abs(dwave / cdelt3)
+
+        num_wave = sp_cropped.shape[0]
+        w_min = max(0, int(round(lambda_0_pixel - deltalambda_pixel / 2)))
+        w_max = min(num_wave, int(round(lambda_0_pixel + deltalambda_pixel / 2)))
+
+        final_mask = sp_cropped[w_min:w_max, :, :]
+
+        hdul[0].data = final_mask
+        header["CRPIX3"] = crpix3 - w_min
+        if "CRPIX1" in header:
+            header["CRPIX1"] -= x_min
+        if "CRPIX2" in header:
+            header["CRPIX2"] -= y_min
+
+        output_filename = maskpath.replace(".fits", "_fully_cropped.fits")
+        hdul.writeto(output_filename, overwrite=True)
+
+    return output_filename
+
+
+# example usage
+"""
+mask_cropped = crop_mask(x_center, y_center, maskpath, spatialcrop_pix, lam_obs, dwave)
+"""
+

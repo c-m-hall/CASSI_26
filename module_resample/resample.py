@@ -240,3 +240,107 @@ print("output cube shape (nvel, ny, nx):", f_v.shape)
 
 
 '''
+
+
+
+
+
+# mask resampling -- same output grid as resample_main (2 kpc/pixel spatial,
+# common velocity grid), but conservative: nearest-neighbor spatially and
+# OR-downsampled spectrally, so a mask value never becomes a fraction and a
+# flagged voxel never gets interpolated away.
+
+
+def _spatial_resample_mask_to_kpc(mask, pixscale_arcsec, z,
+                                   target_kpc=2.0, output_kpc=200.0):
+    """Same geometry as spatial_resample_to_kpc, but nearest-neighbor
+    (order=0) so mask values stay exactly 0 or 1 """
+    kpc_per_arcsec = 1.0 / COSMO.arcsec_per_kpc_proper(z).value
+    old_pix_kpc = pixscale_arcsec * kpc_per_arcsec
+    zoom_factor = old_pix_kpc / target_kpc
+
+    resampled = ndimage.zoom(mask.astype(np.uint8),
+                              (1.0, zoom_factor, zoom_factor), order=0)
+
+    n_out = int(round(output_kpc / target_kpc))
+    nwave, ny_in, nx_in = resampled.shape
+    out = np.ones((nwave, n_out, n_out), dtype=np.uint8)  # pad = 1 (bad)
+
+    def _overlap(n_in, n_out_):
+        n = min(n_in, n_out_)
+        in_lo = (n_in - n) // 2
+        out_lo = (n_out_ - n) // 2
+        return in_lo, in_lo + n, out_lo, out_lo + n
+
+    iy0, iy1, oy0, oy1 = _overlap(ny_in, n_out)
+    ix0, ix1, ox0, ox1 = _overlap(nx_in, n_out)
+    out[:, oy0:oy1, ox0:ox1] = resampled[:, iy0:iy1, ix0:ix1]
+    return out.astype(bool)
+
+
+def _spectral_resample_mask(mask, wave_native, wave_new):
+    """OR-downsample the mask onto wave_new: a new bin is flagged bad if
+    ANY native channel falling in that bin was bad (conservative -- never
+    silently un-flags a voxel through interpolation, unlike a flux-style
+    rebin would)."""
+    edges = np.concatenate((
+        [wave_new[0] - (wave_new[1] - wave_new[0]) / 2],
+        (wave_new[:-1] + wave_new[1:]) / 2,
+        [wave_new[-1] + (wave_new[-1] - wave_new[-2]) / 2],
+    ))
+    mask_new = np.zeros((len(wave_new),) + mask.shape[1:], dtype=bool)
+    for i in range(len(wave_new)):
+        sel = (wave_native >= edges[i]) & (wave_native < edges[i + 1])
+        if sel.any():
+            mask_new[i] = mask[sel].any(axis=0)
+        else:
+            idx = np.argmin(np.abs(wave_native - wave_new[i]))
+            mask_new[i] = mask[idx]
+    return mask_new
+
+
+def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
+                        output_kpc=200.0):
+    """Resample an (already cropped) mask onto the same 2 kpc/pixel spatial
+    grid and common velocity grid that resample_main puts the science cube
+    on, so the two line up voxel-for-voxel. Saves '<mask>_processed_mask.fits'.
+    """
+    with fits.open(maskpath) as hdul:
+        mask = hdul[0].data.astype(bool)
+        header = hdul[0].header
+
+        nwave = header['NAXIS3']
+        crpix = header['CRPIX3']
+        crval = header['CRVAL3']
+        cdelt = 1.25  # matches resample_main's hardcoded native step
+
+        pixel_indices = np.arange(nwave)
+        wave_native = crval + (pixel_indices + 1 - crpix) * cdelt
+
+    mask_s = _spatial_resample_mask_to_kpc(mask, pixscale, z, target_kpc, output_kpc)
+
+    v_grid = build_velocity_grid(dv=dv)
+    wave_new = velocity_to_obs_wavelength(v_grid, z)
+    mask_v = _spectral_resample_mask(mask_s, wave_native, wave_new)
+
+    primary_hdu = fits.PrimaryHDU(data=mask_v.astype(np.uint8))
+    primary_hdu.name = "MASK"
+    primary_hdu.header['COMMENT'] = '1 = bad voxel (object OR sky), 0 = good'
+    primary_hdu.header['PIX_KPC'] = target_kpc
+    primary_hdu.header['DV_KMS'] = dv
+    primary_hdu.header['Z'] = z
+
+    vgrid_hdu = fits.ImageHDU(data=v_grid)
+    vgrid_hdu.name = "V_GRID"
+
+    hdul_out = fits.HDUList([primary_hdu, vgrid_hdu])
+    output_filename = maskpath.split('.fits')[0] + '_processed_mask.fits'
+    hdul_out.writeto(output_filename, overwrite=True)
+
+    return output_filename
+
+
+# example usage
+'''
+mask_final = resample_mask_main(z, mask_crop_path, pixscale)
+'''
