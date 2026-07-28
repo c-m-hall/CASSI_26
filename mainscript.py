@@ -12,6 +12,10 @@ from module_resample.resample import resample_main
 from module_convert_wl.convert_wavel import convert_wl_main
 from module_psf_sub.PSFSubtraction import psf_sub_main
 
+from module_mask.build_mask import build_mask_main
+from module_crop.crop_cube import crop_cube, crop_mask
+from module_resample.resample import resample_main, resample_mask_main
+
 C_KMS = 299792.458
 OII_REST = 3728.48
 
