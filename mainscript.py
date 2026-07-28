@@ -29,10 +29,10 @@ def move_to(path, dest_dir):
     shutil.move(path, new_path)
     return new_path
 
-
 def main(sample_path='muse_x_milliquas_sample.fits',
          pairs_path='muse_x_milliquas_pairs_local.fits',
-         cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2,sex_config=None, sex_binary='sex', field_indices=None):
+         cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2,
+         sex_config='./wl_eso.sex', sex_binary='sex'):
 
     sample = Table.read(sample_path)
     pairs = Table.read(pairs_path)
@@ -49,17 +49,18 @@ def main(sample_path='muse_x_milliquas_sample.fits',
             cube_base = os.path.basename(cubepath)
             try:
                 x, y = convert_coords(ra, dec, cubepath)
+                print(f"{name} / {cube_base}: RA={ra:.6f}, DEC={dec:.6f} -> x={x:.2f}, y={y:.2f}")
 
                 # 1. air-to-vacuum wavelength correction
                 cube_dirname = os.path.dirname(cubepath) + '/'
                 wlconv_path = convert_wl_main(cube_base, cube_dirname)
                 wlconv_path = move_to(wlconv_path, DIR_WLCONV)
 
-
                 # 1b. spatial (SExtractor) + spectral (sky-residual) mask,
-                # combined into one 3D mask and saved alongside the vacuum-wavelength cube -- BEFORE PSF subtraction, so the
-                # white-light image SExtractor sees, and the residual sky spectrum used for the spectral mask, are both unsubtracted
-                
+                # combined into one 3D mask and saved alongside the
+                # vacuum-wavelength cube -- BEFORE PSF subtraction, so the
+                # white-light image SExtractor sees, and the residual sky
+                # spectrum used for the spectral mask, are both unsubtracted.
                 mask_path = build_mask_main(wlconv_path, sex_config=sex_config,
                                              sex_binary=sex_binary)
                 print(f"  mask -> {mask_path}")
@@ -74,19 +75,19 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 crop_path = crop_cube(x, y, psfsub_path, spatialcrop_pix, lam_obs, dwave)
                 crop_path = move_to(crop_path, DIR_CROP)
 
-                
                 # 3b. crop the mask to the identical spatial/spectral window
                 mask_crop_path = crop_mask(x, y, mask_path, spatialcrop_pix, lam_obs, dwave)
                 mask_crop_path = move_to(mask_crop_path, DIR_CROP)
- 
+
                 # 4. spatial/spectral resample -> final product
                 final_path = resample_main(z, crop_path, pixscale)
                 final_path = move_to(final_path, DIR_FINAL)
- 
+
                 # 4b. resample the mask onto the identical output grid
                 mask_final_path = resample_mask_main(z, mask_crop_path, pixscale)
                 mask_final_path = move_to(mask_final_path, DIR_FINAL)
 
+                print(f"Done: {name} / {cube_base} -> {final_path} (mask: {mask_final_path})")
 
             except Exception as e:
                 print(f"Failed on {name} / {cube_base}: {e}")
@@ -94,3 +95,5 @@ def main(sample_path='muse_x_milliquas_sample.fits',
 
 if __name__ == '__main__':
     main()
+
+
