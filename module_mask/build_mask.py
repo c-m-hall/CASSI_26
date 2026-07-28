@@ -54,7 +54,7 @@ def run_sextractor(image_path, sex_config, sex_binary='sex', workdir=None):
         sex_binary, image_path,
         '-c', sex_config,
         '-CATALOG_NAME', catalog_path,
-        '-CHECKIMAGE_TYPE', 'SEGMENTATION',
+        '-CHECKIMAGE_TYPE', 'segmentation',
         '-CHECKIMAGE_NAME', segmap_path,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -138,13 +138,13 @@ def build_spectral_mask(wave, flux, window=151, k=3.0, gap=9, grow=2):
     return mask
 
 
-# ---------------------------------------------------------------------------
+
 # combine + save
-# ---------------------------------------------------------------------------
+
 
 def combine_masks(spatial_mask, spectral_mask):
     """(ny, nx) spatial + (nwave,) spectral -> (nwave, ny, nx) combined mask,
-    True where EITHER mask flags that voxel (broadcast OR)."""
+    True where either mask flags that voxel  """
     return spectral_mask[:, None, None] | spatial_mask[None, :, :]
 
 
@@ -153,8 +153,8 @@ def build_mask_main(cubepath, sex_config, sex_binary='sex',
     """Build the combined 3D mask for `cubepath` and save it alongside the
     cube as '<cube>_MASK3D.fits'. Returns the mask output path.
 
-    `cubepath` should be the cube AFTER air-to-vacuum wavelength conversion
-    and BEFORE PSF subtraction, so the mask is built from an
+    `cubepath` should be the cube after air-to-vacuum wavelength conversion
+    and before PSF subtraction, so the mask is built from an
     unsubtracted white-light image and an unsubtracted sky
     residual spectrum
     """
@@ -171,6 +171,7 @@ def build_mask_main(cubepath, sex_config, sex_binary='sex',
     outpath = cubepath.replace('.fits', '_MASK3D.fits')
     hdu = fits.PrimaryHDU(mask3d.astype(np.uint8), header=cube.data_header)
     hdu.header['COMMENT'] = 'Combined mask: 1 = bad voxel (object OR sky), 0 = good'
+    #kept this consistent with 
     hdu.writeto(outpath, overwrite=True)
 
     return outpath
