@@ -32,7 +32,7 @@ def move_to(path, dest_dir):
 def main(sample_path='muse_x_milliquas_sample.fits',
          pairs_path='muse_x_milliquas_pairs_local.fits',
          cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2,
-         sex_config='./wl_eso.sex', sex_binary='sex'):
+         sex_config='/Users/charishall/CASSI_26/SExtractor_Files/wl_eso.sex', sex_binary='sex'):
 
     sample = Table.read(sample_path)
     pairs = Table.read(pairs_path)
