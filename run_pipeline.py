@@ -53,7 +53,7 @@ def run(download: bool, n_fields: int, max_gb: float, sex_config: str,
         sample_path="muse_x_milliquas_sample.fits",
         pairs_path="muse_x_milliquas_pairs_local.fits",
         cube_dir=dl_cfg.dest,
-        sex_config=sex_config,
+        sex_config=sex-config,
         sex_binary=sex_binary,
     )
 
