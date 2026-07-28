@@ -1,5 +1,5 @@
 """
-Top-level orchestrator -- runs the full CASSI_26 pipeline end to end:
+runs the full CASSI_26 pipeline end to end:
 
     1. build_sample.py     Milliquas x ESO MUSE archive crossmatch
     2. download_sample.py  download the selected cubes
@@ -11,8 +11,7 @@ between them. Re-running is cheap: build_sample's TAP queries are cached
 to disk, and download_sample skips cubes already on disk.
 
 Usage:
-    python run_pipeline.py               # dry run: builds sample, shows what
-                                          # WOULD be downloaded, stops there
+    python run_pipeline.py               # dry run: builds sample, shows what would be downloaded, and stops there
     python run_pipeline.py --download    # actually fetch cubes and process them
 """
 
@@ -23,7 +22,8 @@ import download_sample
 import mainscript
 
 
-def run(download: bool, n_fields: int, max_gb: float, field_indices=None):
+def run(download: bool, n_fields: int, max_gb: float, sex_config: str,
+        sex_binary: str, field_indices=None):
     # 1. crossmatch -> muse_x_milliquas_{pairs,fields,sample}.fits/.csv
     print("=== 1/3: build_sample ===")
     fields, pairs, sample = build_sample.main()
@@ -46,12 +46,15 @@ def run(download: bool, n_fields: int, max_gb: float, field_indices=None):
               "run the processing pipeline). Stopping here.")
         return
 
-    # 3. process every downloaded cube
+    # 3. process every downloaded cube (wavelength conversion -> mask ->
+    #    PSF subtraction -> crop -> resample, mask carried alongside)
     print("\n=== 3/3: mainscript ===")
     mainscript.main(
         sample_path="muse_x_milliquas_sample.fits",
         pairs_path="muse_x_milliquas_pairs_local.fits",
         cube_dir=dl_cfg.dest,
+        sex_config=sex_config,
+        sex_binary=sex_binary,
     )
 
 
@@ -68,7 +71,12 @@ if __name__ == "__main__":
                          "picking the top --n-fields")
     p.add_argument("--max-gb", type=float, default=25.0,
                     help="size budget in GB for the download step")
+    p.add_argument("--sex-config", type=str, default="./sextractor.sex",
+                    help="path to your SExtractor .sex config file")
+    p.add_argument("--sex-binary", type=str, default="sex",
+                    help="SExtractor executable name/path (default: 'sex')")
     args = p.parse_args()
 
     run(download=args.download, n_fields=args.n_fields, max_gb=args.max_gb,
+        sex_config=args.sex_config, sex_binary=args.sex_binary,
         field_indices=args.field_indices)
