@@ -150,14 +150,6 @@ def combine_masks(spatial_mask, spectral_mask):
 
 def build_mask_main(cubepath, sex_config, sex_binary='sex',
                      window=151, k=3.0, gap=9, grow=2, workdir=None):
-    """Build the combined 3D mask for `cubepath` and save it alongside the
-    cube as '<cube>_MASK3D.fits'. Returns the mask output path.
-
-    `cubepath` should be the cube after air-to-vacuum wavelength conversion
-    and before PSF subtraction, so the mask is built from an
-    unsubtracted white-light image and an unsubtracted sky
-    residual spectrum
-    """
     cube = Cube(cubepath)
 
     spatial_mask = build_spatial_mask(cube, sex_config, sex_binary=sex_binary,
@@ -166,17 +158,17 @@ def build_mask_main(cubepath, sex_config, sex_binary='sex',
     spectral_mask = build_spectral_mask(wave, sky_spec, window=window, k=k,
                                          gap=gap, grow=grow)
 
-    mask3d = combine_masks(spatial_mask, spectral_mask)
+    bad3d = combine_masks(spatial_mask, spectral_mask)   # True = bad (internal convention)
+
+    # flip to on-disk convention: 1 = good (keep), 0 = bad (masked)
+    mask3d = ~bad3d
 
     outpath = cubepath.replace('.fits', '_MASK3D.fits')
     hdu = fits.PrimaryHDU(mask3d.astype(np.uint8), header=cube.data_header)
-    hdu.header['COMMENT'] = 'Combined mask: 1 = bad voxel (object OR sky), 0 = good'
-    #kept this consistent with 
+    hdu.header['COMMENT'] = 'Combined mask: 1 = good voxel (keep), 0 = bad (object OR sky)'
     hdu.writeto(outpath, overwrite=True)
 
     return outpath
-
-
 # example usage
 '''
 build_mask_main('cubepath_VACUUM.fits', sex_config='./my_config.sex')
