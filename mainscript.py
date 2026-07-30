@@ -63,6 +63,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
 
                 # 2. PSF subtraction, on the wavelength-corrected cube
                 psfsub_path = psf_sub_main(wlconv_path, x, y, z)
+                psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
                 
 
                 # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
@@ -76,7 +77,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 print(f"  mask -> {mask_path}")
 
 
-                psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
+                
 
                 
                 # 3. crop around the QSO, centered on observed [OII]
