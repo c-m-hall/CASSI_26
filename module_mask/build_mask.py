@@ -38,9 +38,19 @@ from scipy.ndimage import binary_closing, binary_dilation, median_filter
 # spatial mask: SExtractor segmentation on the white-light image
 
 
+
 def make_whitelight_image(cube):
     """Collapse an mpdaf Cube along wavelength -> mpdaf Image (sum), which
-    carries the cube's spatial WCS through automatically."""
+    carries the cube's spatial WCS through automatically.
+
+    Parameters
+    ----------
+    cube : str, Path, or mpdaf.obj.Cube
+        Either a path to a cube FITS file, or an already-loaded Cube object.
+    """
+    if isinstance(cube, (str, Path)):
+        cube = Cube(str(cube))
+
     return cube.sum(axis=0)
 
 
