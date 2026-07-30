@@ -148,17 +148,21 @@ def combine_masks(spatial_mask, spectral_mask):
     return spectral_mask[:, None, None] | spatial_mask[None, :, :]
 
 
-def build_mask_main(cubepath, sex_config, sex_binary='sex',
+def build_mask_main(cubepath, psfcube, sex_config, sex_binary='sex',
                      window=151, k=3.0, gap=9, grow=2, workdir=None):
     cube = Cube(cubepath)
 
-    spatial_mask = build_spatial_mask(cube, sex_config, sex_binary=sex_binary,
+    spatial_mask1 = build_spatial_mask(cube, sex_config, sex_binary=sex_binary,
                                        workdir=workdir)
-    wave, sky_spec = residual_sky_spectrum(cube, spatial_mask)
+    wave, sky_spec = residual_sky_spectrum(cube, spatial_mask1)
     spectral_mask = build_spectral_mask(wave, sky_spec, window=window, k=k,
                                          gap=gap, grow=grow)
 
-    bad3d = combine_masks(spatial_mask, spectral_mask)   # True = bad (internal convention)
+    spatial_mask_final = build_spatial_mask(psfcube, sex_config, sex_binary=sex_binary,
+                                       workdir=workdir)
+
+    
+    bad3d = combine_masks(spatial_mask_final, spectral_mask)   # True = bad (internal convention)
 
     # flip to on-disk convention: 1 = good (keep), 0 = bad (masked)
     mask3d = ~bad3d
