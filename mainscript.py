@@ -70,7 +70,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 # vacuum-wavelength cube -- make spectral mask  BEFORE PSF subtraction, and then spatial part AFTER PSF subtraction so the
                 # white-light image SExtractor sees, and the residual sky
                 # spectrum used for the spectral mask, are both unsubtracted but the spatial mask does not include original LARGE PSF
-                mask_path = build_mask_main(wlconv_path, psfsub_path, sex_config=sex_config,
+                mask_path = build_mask_main(wlconv_path, psfcube=psfsub_path, sex_config=sex_config,
                                              sex_binary=sex_binary)
                 
                 print(f"  mask -> {mask_path}")
