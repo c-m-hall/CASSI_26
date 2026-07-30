@@ -175,7 +175,4 @@ def build_mask_main(cubepath, psfcube, sex_config, sex_binary='sex',
     hdu.writeto(outpath, overwrite=True)
 
     return outpath
-# example usage
-
-build_mask_main('/Users/charishall/CASSI_26/J0015/J0015_vac.fits', sex_config='/Users/charishall/CASSI_26/wl_eso.sex')
 
