@@ -1,3 +1,6 @@
+
+
+
 """
 Build a 3D (wave, y, x) bad-voxel mask for a MUSE cube, run after
 air-to-vacuum wavelength conversion and before PSF subtraction.
@@ -96,7 +99,6 @@ def build_spatial_mask(cube, sex_config, sex_binary='sex', workdir=None):
 
 # spectral mask: sky-residual masking (same algorithm as build_sky_mask.ipynb)
 
-
 def residual_sky_spectrum(cube, spatial_mask):
     """Median spectrum across background (non-object) spaxels only -- 
     per-field residual sky spectrum for input
@@ -174,6 +176,6 @@ def build_mask_main(cubepath, psfcube, sex_config, sex_binary='sex',
 
     return outpath
 # example usage
-'''
-build_mask_main('cubepath_VACUUM.fits', sex_config='./my_config.sex')
-'''
+
+build_mask_main('/Users/charishall/CASSI_26/J0015/J0015_vac.fits', sex_config='/Users/charishall/CASSI_26/wl_eso.sex')
+
