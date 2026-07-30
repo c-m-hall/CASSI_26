@@ -4,6 +4,7 @@ import os
 import shutil
 
 from astropy.table import Table
+from pathlib import Path
 
 #import all modules scripts
 from module_download.extractdata import get_cube_paths, get_z, convert_coords
@@ -74,7 +75,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 mask_path = build_mask_main(wlconv_path, psfcube=psfsub_path, sex_config=sex_config,
                                              sex_binary=sex_binary)
                 
-                print(f"  mask -> {mask_path}")
+           
 
 
                 
