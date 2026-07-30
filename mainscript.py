@@ -60,18 +60,20 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 wlconv_path = convert_wl_main(cube_base, cube_dirname)
                 wlconv_path = move_to(wlconv_path, DIR_WLCONV)
 
-                # 1b. spatial (SExtractor) + spectral (sky-residual) mask,
-                # combined into one 3D mask and saved alongside the
-                # vacuum-wavelength cube -- BEFORE PSF subtraction, so the
-                # white-light image SExtractor sees, and the residual sky
-                # spectrum used for the spectral mask, are both unsubtracted.
-                mask_path = build_mask_main(wlconv_path, sex_config=sex_config,
-                                             sex_binary=sex_binary)
-                print(f"  mask -> {mask_path}")
 
                 # 2. PSF subtraction, on the wavelength-corrected cube
                 psfsub_path = psf_sub_main(wlconv_path, x, y, z)
                 psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
+
+                # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
+                # combined into one 3D mask and saved alongside the
+                # vacuum-wavelength cube -- make spectral mask  BEFORE PSF subtraction, and then spatial part AFTER PSF subtraction so the
+                # white-light image SExtractor sees, and the residual sky
+                # spectrum used for the spectral mask, are both unsubtracted but the spatial mask does not include original LARGE PSF
+                mask_path = build_mask_main(wlconv_path, psfsub_path, sex_config=sex_config,
+                                             sex_binary=sex_binary)
+                
+                print(f"  mask -> {mask_path}")
 
                 # 3. crop around the QSO, centered on observed [OII]
                 lam_obs = OII_REST * (1 + z)
