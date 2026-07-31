@@ -33,7 +33,7 @@ from astropy.io import fits
 from mpdaf.obj import Cube
 from scipy.ndimage import binary_closing, binary_dilation, median_filter
 
-
+from pathlib import Path
 # 
 # spatial mask: SExtractor segmentation on the white-light image
 
