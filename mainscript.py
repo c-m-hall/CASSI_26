@@ -99,7 +99,13 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 mask_final_path = resample_mask_main(z, mask_crop_path, pixscale)
                 mask_final_path = move_to(mask_final_path, DIR_FINAL)
 
-                print(f"Done: {name} / {cube_base} -> {final_path} (mask: {mask_final_path})")
+
+                #5. apply the mask to the cube 
+                masked_cube_final_path = apply_mask_main(final_path, mask_final_path, out_dir= DIR_FINAL)
+
+                print(f"Done: {name} / {cube_base} -> {final_path} (mask: {mask_final_path} {masked_final_cube} -> {final_path})")
+
+            
 
             except Exception as e:
                 print(f"Failed on {name} / {cube_base}: {e}")
