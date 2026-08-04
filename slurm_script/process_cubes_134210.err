@@ -1,0 +1,2 @@
+/var/spool/slurmd/job134210/slurm_script: line 14: 3494087 Killed                  python run_pipeline.py --download --field-indices 97 98 99 127 137 --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
+[2026-08-04T13:31:35.967] error: Detected 1 oom_kill event in StepId=134210.batch. Some of the step tasks have been OOM Killed.
