@@ -20,12 +20,23 @@ from module_resample.resample import resample_main, resample_mask_main
 C_KMS = 299792.458
 OII_REST = 3728.48
 
-# output subdirectories for each pipeline stage
-DIR_WLCONV = '/Users/charishall/CASSI_26/converted_wl/'
-DIR_PSFSUB = '/Users/charishall/CASSI_26/psf_subbed/'
-DIR_CROP   = '/Users/charishall/CASSI_26/cropped/'
-DIR_FINAL  = '/Users/charishall/CASSI_26/resampled/'
+BASE_DIR = os.environ.get(
 
+    'CASSI_OUTPUT_DIR',
+
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'outputs'),
+
+)
+# output subdirectories for each pipeline stage
+DIR_WLCONV = os.path.join(BASE_DIR, 'converted_wl') + '/'
+
+DIR_PSFSUB = os.path.join(BASE_DIR, 'psf_subbed') + '/'
+
+DIR_CROP   = os.path.join(BASE_DIR, 'cropped') + '/'
+
+DIR_FINAL  = os.path.join(BASE_DIR, 'resampled') + '/'
+
+ 
 
 def move_to(path, dest_dir):
     """Relocate step's output into its staged subdirectory; return new path."""
