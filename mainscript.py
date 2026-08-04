@@ -36,7 +36,8 @@ DIR_CROP   = os.path.join(BASE_DIR, 'cropped') + '/'
 
 DIR_FINAL  = os.path.join(BASE_DIR, 'resampled') + '/'
 
- 
+for d in (DIR_WLCONV, DIR_PSFSUB, DIR_CROP, DIR_FINAL):
+    os.makedirs(d, exist_ok=True)
 
 def move_to(path, dest_dir):
     """Relocate step's output into its staged subdirectory; return new path."""
