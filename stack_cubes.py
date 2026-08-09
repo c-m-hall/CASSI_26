@@ -12,7 +12,7 @@ Usage:
     python stack_cubes.py cube1.fits cube2.fits cube3.fits -o stacked.fits
  
     # Or grab everything in a directory
-    python stack_cubes.py --dir /scratch/$USER/CASSI_26/resampled --pattern "*.fits" -o stacked.fits
+    python stack_cubes.py --dir ..../CASSI_26/masked --pattern "*.fits" -o stacked.fits
 """
  
 import argparse
