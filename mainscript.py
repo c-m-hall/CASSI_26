@@ -20,7 +20,7 @@ from module_resample.resample import resample_main, resample_mask_main
 C_KMS = 299792.458
 OII_REST = 3728.48
 
-BASE_DIR = '/carnegie/scidata/groups/musestacking/CASSI_26/cassi_outputs/'
+BASE_DIR = '/carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/'
 
 
 # output subdirectories for each pipeline stage
