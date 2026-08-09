@@ -11,4 +11,6 @@
 module load conda
 conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
+cd /carnegie/scidata/groups/muse_stacking/CASSI_26
+
 python stack_cubes.py --dir cassi_outputs/masked -o cassi_outputs/stacked/stacked.fits
