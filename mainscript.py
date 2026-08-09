@@ -30,9 +30,11 @@ DIR_PSFSUB = os.path.join(BASE_DIR, 'psf_subbed') + '/'
 
 DIR_CROP   = os.path.join(BASE_DIR, 'cropped') + '/'
 
-DIR_FINAL  = os.path.join(BASE_DIR, 'resampled') + '/'
+DIR_RESAMPLED  = os.path.join(BASE_DIR, 'resampled') + '/'
 
-for d in (DIR_WLCONV, DIR_PSFSUB, DIR_CROP, DIR_FINAL):
+DIR_FINAL  = os.path.join(BASE_DIR, 'masked') + '/'
+
+for d in (DIR_WLCONV, DIR_PSFSUB, DIR_CROP, DIR_RESAMPLED, DIR_FINAL):
     os.makedirs(d, exist_ok=True)
 
 def move_to(path, dest_dir):
@@ -101,11 +103,11 @@ def main(sample_path='muse_x_milliquas_sample.fits',
 
                 # 4. spatial/spectral resample -> final product
                 final_path = resample_main(z, crop_path, pixscale)
-                final_path = move_to(final_path, DIR_FINAL)
+                final_path = move_to(final_path, DIR_RESAMPLED)
 
                 # 4b. resample the mask onto the identical output grid
                 mask_final_path = resample_mask_main(z, mask_crop_path, pixscale)
-                mask_final_path = move_to(mask_final_path, DIR_FINAL)
+                mask_final_path = move_to(mask_final_path, DIR_RESAMPLED)
 
 
                 #5. apply the mask to the cube 
