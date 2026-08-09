@@ -23,7 +23,7 @@ import mainscript
 
 
 def run(download: bool, n_fields: int, max_gb: float, sex_config: str,
-        sex_binary: str, field_indices=None):
+        sex_binary: str, field_indices=None, resume_from='download'):
     # 1. crossmatch -> muse_x_milliquas_{pairs,fields,sample}.fits/.csv
     print("=== 1/3: build_sample ===")
     fields, pairs, sample = build_sample.main()
@@ -55,6 +55,7 @@ def run(download: bool, n_fields: int, max_gb: float, sex_config: str,
         cube_dir=dl_cfg.dest,
         sex_config=sex_config,
         sex_binary=sex_binary,
+        resume_from=resume_from,
     )
 
 
@@ -75,8 +76,13 @@ if __name__ == "__main__":
                     help="path to your SExtractor .sex config file")
     p.add_argument("--sex-binary", type=str, default="sex",
                     help="SExtractor executable name/path (default: 'sex')")
+    p.add_argument("--resume-from", type=str, default="download",
+                    choices=["download", "mask"],
+                    help="'mask' skips convert_wl/psf_sub and resumes at mask/"
+                         "crop/resample using their already-produced outputs "
+                         "(default: 'download', runs every stage)")
     args = p.parse_args()
 
     run(download=args.download, n_fields=args.n_fields, max_gb=args.max_gb,
         sex_config=args.sex_config, sex_binary=args.sex_binary,
-        field_indices=args.field_indices)
+        field_indices=args.field_indices, resume_from=args.resume_from)

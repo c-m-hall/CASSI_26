@@ -47,7 +47,7 @@ def move_to(path, dest_dir):
 def main(sample_path='muse_x_milliquas_sample.fits',
          pairs_path='muse_x_milliquas_pairs_local.fits',
          cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2,
-         sex_config='/Users/charishall/CASSI_26/SExtractor_Files/wl_eso.sex', sex_binary='/opt/homebrew/bin/sex'):
+         sex_config='/Users/charishall/CASSI_26/SExtractor_Files/wl_eso.sex', sex_binary='/opt/homebrew/bin/sex', resume_from='download'):
 
     sample = Table.read(sample_path)
     pairs = Table.read(pairs_path)
@@ -66,15 +66,30 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 x, y = convert_coords(ra, dec, cubepath)
                 print(f"{name} / {cube_base}: RA={ra:.6f}, DEC={dec:.6f} -> x={x:.2f}, y={y:.2f}")
 
-                # 1. air-to-vacuum wavelength correction
-                cube_dirname = os.path.dirname(cubepath) + '/'
-                wlconv_path = convert_wl_main(cube_base, cube_dirname)
-                wlconv_path = move_to(wlconv_path, DIR_WLCONV)
 
+                if resume_from == 'mask':
+                    # skip re-running convert_wl / psf_sub; find their
+                    # already-produced outputs on disk instead
+                    vac_name = cube_base.replace('.fits', '_vac.fits')
+                    wlconv_path = os.path.join(DIR_WLCONV, vac_name)
+                    psfsub_path = os.path.join(
+                        DIR_PSFSUB, vac_name.replace('.fits', '_PSFSUBBED.fits'))
+                    if not (os.path.exists(wlconv_path) and os.path.exists(psfsub_path)):
+                        raise FileNotFoundError(
+                            f"resume_from='mask' but missing prior output(s): "
+                            f"{wlconv_path if not os.path.exists(wlconv_path) else psfsub_path}"
+                        )
+                    print(f"  resuming from mask stage using {wlconv_path}, {psfsub_path}")
+                else:
+                    # 1. air-to-vacuum wavelength correction
+                    cube_dirname = os.path.dirname(cubepath) + '/'
+                    wlconv_path = convert_wl_main(cube_base, cube_dirname)
+                    wlconv_path = move_to(wlconv_path, DIR_WLCONV)
 
-                # 2. PSF subtraction, on the wavelength-corrected cube
-                psfsub_path = psf_sub_main(wlconv_path, x, y, z)
-                psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
+                    # 2. PSF subtraction, on the wavelength-corrected cube
+                    psfsub_path = psf_sub_main(wlconv_path, x, y, z)
+                    psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
+
                 
 
                 # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
