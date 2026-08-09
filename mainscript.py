@@ -14,6 +14,7 @@ from module_convert_wl.convert_wavel import convert_wl_main
 from module_psf_sub.PSFSubtraction import psf_sub_main
 
 from module_mask.build_mask import build_mask_main
+from module_mask.apply_mask import apply_mask_main
 from module_crop.crop_cube import crop_cube, crop_mask
 from module_resample.resample import resample_main, resample_mask_main
 
@@ -128,8 +129,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 #5. apply the mask to the cube 
                 masked_cube_final_path = apply_mask_main(final_path, mask_final_path, out_dir= DIR_FINAL)
 
-                print(f"Done: {name} / {cube_base} -> {final_path} (mask: {mask_final_path} {masked_final_cube} -> {final_path})")
-
+                print(f"Done: {name} / {cube_base} -> {masked_cube_final_path}")
             
 
             except Exception as e:
