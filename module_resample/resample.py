@@ -336,8 +336,9 @@ def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
     vgrid_hdu.name = "V_GRID"
 
     hdul_out = fits.HDUList([primary_hdu, vgrid_hdu])
-    output_filename = maskpath.split('.fits')[0] + '_processed_mask.fits'
-    output_filename = output_filename.replace('/', '.')
+    out_dir = os.path.dirname(maskpath)
+    out_base = os.path.basename(maskpath).split('.fits')[0] + '_processed_mask.fits'
+    output_filename = os.path.join(out_dir, out_base)
     hdul_out.writeto(output_filename, overwrite=True)
 
     return output_filename
