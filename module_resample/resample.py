@@ -1,5 +1,5 @@
 #resample 
-
+import os
 import numpy as np
 from scipy import ndimage
 import astropy.units as u
@@ -211,8 +211,9 @@ def resample_main(z,cubepath, pixscale):
 
 
     # write the HDUList to a new FITS file
-    output_filename = cubepath.split('.fits')[0] + '_processed_cube.fits'
-    output_filename = output_filename.replace('/', '.')
+    out_dir = os.path.dirname(cubepath)
+    out_base = os.path.basename(cubepath).split('.fits')[0] + '_processed_cube.fits'
+    output_filename = os.path.join(out_dir, out_base)
     hdul.writeto(output_filename, overwrite=True)
 
 
