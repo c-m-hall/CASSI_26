@@ -120,9 +120,9 @@ def find_local_file(dp_id, dest):
     return matches[0] if matches else None
 
 
-def build_local_pairs_table(dp_ids, name_for_dpid, dest):
-    """(Name, cube_filename) rows for every dp_id actually found on disk --
-    this is the table `get_cube_paths()` reads via `pairs_path`."""
+def build_local_pairs_table(dp_ids, name_for_dpid, exptimes, dest):
+    """(Name, cube_filename, exptime) rows for every dp_id actually found on
+    disk -- this is the table `get_cube_paths()` reads via `pairs_path`."""
     rows = []
     missing = []
     for dp_id in dp_ids:
@@ -130,9 +130,9 @@ def build_local_pairs_table(dp_ids, name_for_dpid, dest):
         if local is None:
             missing.append(dp_id)
             continue
-        rows.append((name_for_dpid[dp_id], local.name))
+        rows.append((name_for_dpid[dp_id], local.name, exptimes.get(dp_id, np.nan)))
 
-    table = Table(rows=rows, names=("Name", "cube_filename"))
+    table = Table(rows=rows, names=("Name", "cube_filename", "exptime"))
     return table, missing
 
 
@@ -173,7 +173,7 @@ def main(cfg: Config = Config()):
     # or retrieve_data silently falls back to ~/.astropy/cache/astroquery/Eso.
     eso.retrieve_data(queue, destination=cfg.dest, continuation=False, unzip=True)
 
-    pairs_table, missing = build_local_pairs_table(queue, name_for_dpid, cfg.dest)
+    pairs_table, missing = build_local_pairs_table(queue, name_for_dpid, exptimes, cfg.dest)
     pairs_table.write(cfg.pairs_out, overwrite=True)
 
     print(f"\nsaved {len(pairs_table)} cube(s) to {cfg.dest!r}")
