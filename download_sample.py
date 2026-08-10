@@ -150,8 +150,9 @@ def main(cfg: Config = Config()):
     if n_empty:
         print(f"! {n_empty}/{len(chosen)} selected field(s) have no downloadable "
               f"per-OB cube (NFM/offset-sky/combine only) -- nothing to download.")
-
-    sizes = estimated_sizes_gb(dp_ids)
+      
+    sizes, exptimes = estimated_sizes_gb(dp_ids)
+  
     total_gb = sum(sizes.values())
     queue, queue_gb = apply_budget(dp_ids, sizes, cfg.max_gb)
     print(f"\nfull set ~{total_gb:.1f} GB; MAX_GB={cfg.max_gb} -> queue {len(queue)} of "
