@@ -78,20 +78,24 @@ def dp_ids_for_fields(chosen):
 
 
 def estimated_sizes_gb(dp_ids, chunk=100):
-    """{dp_id: size_GB} from ESO ObsCore access_estsize (kB). Metadata only."""
+    """{dp_id: (size_GB, exptime_s)} from ESO ObsCore. Metadata only."""
     import pyvo
     svc = pyvo.dal.TAPService(ESO_TAP)
 
     sizes = {}
+    exptimes = {}
     for i in range(0, len(dp_ids), chunk):
         batch = dp_ids[i:i + chunk]
         id_list = ",".join(f"'{d}'" for d in batch)
-        query = f"SELECT dp_id, access_estsize FROM ivoa.ObsCore WHERE dp_id IN ({id_list})"
+        query = (
+            f"SELECT dp_id, access_estsize, t_exptime FROM ivoa.ObsCore "
+            f"WHERE dp_id IN ({id_list})"
+        )
         rows = svc.search(query).to_table()
         for r in rows:
             sizes[str(r["dp_id"])] = float(r["access_estsize"]) / 1e6  # kB -> GB
-    return sizes
-
+            exptimes[str(r["dp_id"])] = float(r["t_exptime"])
+    return sizes, exptimes
 
 def apply_budget(dp_ids, sizes, max_gb):
     """Keep cubes in order until adding the next one would exceed max_gb."""
