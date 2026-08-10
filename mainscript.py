@@ -17,7 +17,7 @@ from module_mask.build_mask import build_mask_main
 from module_mask.apply_mask import apply_mask_main
 from module_crop.crop_cube import crop_cube, crop_mask
 from module_resample.resample import resample_main, resample_mask_main
-
+from astropy.io import fits
 C_KMS = 299792.458
 OII_REST = 3728.48
 
@@ -45,6 +45,13 @@ def move_to(path, dest_dir):
     shutil.move(path, new_path)
     return new_path
 
+
+def set_exptime_header(path, exptime):
+    """Force-write EXPTIME into a FITS file's primary header in place."""
+    with fits.open(path, mode='update') as hdul:
+        hdul[0].header['EXPTIME'] = exptime
+        hdul.flush()
+        
 def main(sample_path='muse_x_milliquas_sample.fits',
          pairs_path='muse_x_milliquas_pairs_local.fits',
          cube_dir='./scratch/', spatialcrop_pix=200, vel_window_kms=5000, pixscale=0.2,
@@ -86,11 +93,14 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                     cube_dirname = os.path.dirname(cubepath) + '/'
                     wlconv_path = convert_wl_main(cube_base, cube_dirname)
                     wlconv_path = move_to(wlconv_path, DIR_WLCONV)
+                    if exptime is not None:
+                        set_exptime_header(wlconv_path, exptime)
 
                     # 2. PSF subtraction, on the wavelength-corrected cube
                     psfsub_path = psf_sub_main(wlconv_path, x, y, z)
                     psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
-
+                    if exptime is not None:
+                        set_exptime_header(psfsub_path, exptime)
                 
 
                 # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
@@ -112,6 +122,8 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 dwave = (2 * vel_window_kms / C_KMS) * lam_obs
                 crop_path = crop_cube(x, y, psfsub_path, spatialcrop_pix, lam_obs, dwave)
                 crop_path = move_to(crop_path, DIR_CROP)
+                if exptime is not None:
+                    set_exptime_header(crop_path, exptime)
 
                 # 3b. crop the mask to the identical spatial/spectral window
                 mask_crop_path = crop_mask(x, y, mask_path, spatialcrop_pix, lam_obs, dwave)
@@ -120,6 +132,8 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                 # 4. spatial/spectral resample -> final product
                 final_path = resample_main(z, crop_path, pixscale)
                 final_path = move_to(final_path, DIR_RESAMPLED)
+                if exptime is not None:
+                    set_exptime_header(final_path, exptime)
 
                 # 4b. resample the mask onto the identical output grid
                 mask_final_path = resample_mask_main(z, mask_crop_path, pixscale)
@@ -128,6 +142,8 @@ def main(sample_path='muse_x_milliquas_sample.fits',
 
                 #5. apply the mask to the cube 
                 masked_cube_final_path = apply_mask_main(final_path, mask_final_path, out_dir= DIR_FINAL)
+                if exptime is not None:
+                    set_exptime_header(masked_cube_final_path, exptime)
 
                 print(f"Done: {name} / {cube_base} -> {masked_cube_final_path}")
             
