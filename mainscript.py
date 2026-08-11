@@ -96,7 +96,7 @@ def main(sample_path='muse_x_milliquas_sample.fits',
  
                 exptime = get_exptime_for_cube(pairs, cube_base)
  
-                if resume_from == 'mask':
+                if resume_from in ('mask', 'resample'):
                     # skip re-running convert_wl / psf_sub; find their
                     # already-produced outputs on disk instead
                     vac_name = cube_base.replace('.fits', '_vac.fits')
@@ -105,10 +105,10 @@ def main(sample_path='muse_x_milliquas_sample.fits',
                         DIR_PSFSUB, vac_name.replace('.fits', '_PSFSUBBED.fits'))
                     if not (os.path.exists(wlconv_path) and os.path.exists(psfsub_path)):
                         raise FileNotFoundError(
-                            f"resume_from='mask' but missing prior output(s): "
+                            f"resume_from='{resume_from}' but missing prior output(s): "
                             f"{wlconv_path if not os.path.exists(wlconv_path) else psfsub_path}"
                         )
-                    print(f"  resuming from mask stage using {wlconv_path}, {psfsub_path}")
+                    print(f"  resuming (from '{resume_from}') using {wlconv_path}, {psfsub_path}")
                 else:
                     # 1. air-to-vacuum wavelength correction
                     cube_dirname = os.path.dirname(cubepath) + '/'
