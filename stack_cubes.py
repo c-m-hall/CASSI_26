@@ -108,8 +108,7 @@ def stack_cubes(cubes, paths):
     var_cube = np.where(n_for_var > 0, var_sum / n_for_var**2, np.nan)
     stacked.var = var_cube
  
-    else:
-        print("[WARNING] Not every cube has a variance extension - skipping VAR propagation.")
+   
 
     return stacked, n_stack, exptime_cube, var_cube
 
