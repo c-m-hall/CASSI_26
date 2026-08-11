@@ -77,9 +77,10 @@ if __name__ == "__main__":
     p.add_argument("--sex-binary", type=str, default="sex",
                     help="SExtractor executable name/path (default: 'sex')")
     p.add_argument("--resume-from", type=str, default="download",
-                    choices=["download", "mask"],
+                    choices=["download", "mask", "resample"],
                     help="'mask' skips convert_wl/psf_sub and resumes at mask/"
-                         "crop/resample using their already-produced outputs "
+                         "crop/resample using their already-produced outputs " 
+                         "'resample' additionally reuses existing mask/crop "
                          "(default: 'download', runs every stage)")
     args = p.parse_args()
 
