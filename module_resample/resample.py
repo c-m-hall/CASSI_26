@@ -186,23 +186,43 @@ def resample_main(z,cubepath, pixscale):
     #Generate the native wavelength array
     wave_native = crval + (pixel_indices + 1 - crpix) * cdelt
 
-    f_v, f_v_err, v_grid = process_field(cube_data, wave_native, cube_err, pixscale, z)
+    f_v, f_v_err, v_grid = process_field(
+    cube_data, wave_native, cube_err, pixscale, z)
 
     primary_hdu = fits.PrimaryHDU(data=f_v)
-    primary_hdu.name = "DATA"  
-
-
-
+    primary_hdu.name = "DATA"
+    
+    # Velocity WCS
+    zero_idx = np.argmin(np.abs(v_grid))
+    
+    primary_hdu.header["CTYPE3"] = "VELO"
+    primary_hdu.header["CUNIT3"] = "km/s"
+    primary_hdu.header["CRPIX3"] = zero_idx + 1
+    primary_hdu.header["CRVAL3"] = v_grid[zero_idx]
+    primary_hdu.header["CDELT3"] = v_grid[1] - v_grid[0]
+    
+    primary_hdu.header["VELREF"] = oII_rest
+    primary_hdu.header["VELUNIT"] = "km/s"
+    
+    # Other metadata
+    primary_hdu.header["PIX_KPC"] = 2.0
+    primary_hdu.header["DV_KMS"] = 25.0
+    primary_hdu.header["Z"] = z
+    
     error_hdu = fits.ImageHDU(data=f_v_err)
-    error_hdu.name = "VAR"   
-
-    # create ImageHDU for the 1D velocity grid
+    error_hdu.name = "VAR"
+    
     vgrid_hdu = fits.ImageHDU(data=v_grid)
     vgrid_hdu.name = "V_GRID"
+    
+    hdul = fits.HDUList([
+        primary_hdu,
+        error_hdu,
+        vgrid_hdu
+    ])
+    
 
-    # Bundle them together into an HDUList
-    hdul = fits.HDUList([primary_hdu, error_hdu, vgrid_hdu])
-
+ 
     # add headers
 
     hdul[0].header['PIX_KPC'] = 2.0      # Target spatial resolution
