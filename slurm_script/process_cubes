@@ -12,4 +12,4 @@ module load conda
 conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
 python run_pipeline.py --download --field-indices 97 98 99 127 137 \
-    --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex --resume-from mask
+    --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex --resume-from resample
