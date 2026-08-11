@@ -1,33 +1,27 @@
 """
 stack_cubes.py
 
-Stack multiple processed/masked MUSE cubes using the median.
+Stack multiple processed/masked MUSE cubes together.
+
+Masked spaxels/voxels in the input cubes are stored as NaN, so they're
+simply ignored (via NaN-aware numpy functions) rather than tracked with
+a separate mask array.
 
 Assumes the input cubes have already been cropped/resampled onto the
 same spatial and spectral grid (as your pipeline's final output does) -
-stacking only makes sense if they line up pixel-for-pixel.
+stacking only makes sense if they line up voxel-for-voxel.
 
-
-In addition to the stacked (median) data cube, the output FITS file now
-also contains:
-
-    - a NSTACK extension: number of cubes contributing (finite, i.e.
-      not NaN) at each voxel
-    - an EXPTIME extension: total exposure time contributing at each
-      voxel (sum of each input cube's EXPTIME header value, over only
-      the cubes that are finite/unexcluded at that voxel)
-    - a VAR extension: propagated variance, computed as
-      sum(var_i) / n^2, where n is the number of cubes with a finite
-      variance at that voxel (this is the correct error propagation
-      for an *average* of n measurements, which is what the median
-      approximates for the purposes of variance bookkeeping)
+Both a mean stack and a median stack are always computed; --method picks
+which one becomes the primary DATA extension in the output file, and the
+mean stack is always additionally saved as a MEAN extension (with its
+variance as MEAN_VAR) regardless of --method.
 
 Usage:
     # List cubes explicitly
     python stack_cubes.py cube1.fits cube2.fits cube3.fits -o stacked.fits
 
     # Or grab everything in a directory
-    python stack_cubes.py --dir ..../CASSI_26/masked --pattern "*.fits" -o stacked.fits
+    python stack_cubes.py --dir /scratch/$USER/CASSI_26/masked --pattern "*.fits" -o stacked.fits --method median
 """
 
 import argparse
@@ -48,90 +42,85 @@ def load_cubes(paths):
     return cubes
 
 
-def get_exptime(cube, path):
-    """Pull EXPTIME out of a cube's header, warning if it's missing."""
-    header = cube.primary_header if cube.primary_header else cube.data_header
-    exptime = header.get("EXPTIME", None)
-    if exptime is None:
-        print(f"[WARNING] No EXPTIME keyword found in {path}, treating as 0.")
-        exptime = 0.0
-    return float(exptime)
+def _combine(data_stack, n_map, method):
+    """Combine an (N, ...) stack of arrays along axis 0, NaN-aware."""
+    all_nan = n_map == 0
+    with np.errstate(invalid='ignore'):
+        if method == "sum":
+            out = np.nansum(data_stack, axis=0)
+        elif method == "mean":
+            out = np.nanmean(data_stack, axis=0)
+        elif method == "median":
+            out = np.nanmedian(data_stack, axis=0)
+        else:
+            raise ValueError(f"Unknown method '{method}'; expected 'sum', 'mean', or 'median'")
+    out[all_nan] = np.nan
+    return out
 
 
-def stack_cubes(cubes, paths):
-    """Median-combine data arrays together, treating NaN as the mask
-    indicator (bad/excluded voxels are already NaN in the input cubes),
-    and track per-voxel spaxel counts, exposure time, and propagated
-    variance.
+def stack_cubes(cubes, method="median"):
+    """Combine data arrays together, ignoring NaNs (masked spaxels are NaN).
 
-    A voxel ends up NaN in the output only if it's NaN in every single
-    input cube; otherwise it's combined over whichever inputs are
-    finite at that voxel.
+    Always computes both a mean stack and a median stack; `method` picks
+    which one (or 'sum') is returned as the primary result.
+
+    method : {'sum', 'mean', 'median'}
+        Which combination becomes the primary output.
+
+    A voxel is NaN in the output only if it's NaN in every single input
+    cube; otherwise it's combined over whichever inputs are finite there.
+
+    Returns
+    -------
+    primary : mpdaf.obj.Cube
+        The `method`-combined cube, with .var set to sum(var) / n**2.
+    mean_cube : mpdaf.obj.Cube
+        The mean-combined cube (same var formula), for saving as an
+        extra extension regardless of what `method` was.
+    n_map : numpy.ndarray
+        Per-voxel count of how many input cubes contributed (same shape
+        as the data).
     """
-    stacked = cubes[0].copy()
+    data_stack = np.stack(
+        [np.ma.filled(c.data, np.nan).astype(float) for c in cubes], axis=0
+    )
+    finite_stack = ~np.isnan(data_stack)
+    n_map = finite_stack.sum(axis=0)
+    n_safe = np.maximum(n_map, 1)
+    all_nan = n_map == 0
 
-    # stack across the cube (N) axis, NaN = excluded 
-    data_stack = np.stack([np.asarray(c.data) for c in cubes], axis=0)  # (N, nz, ny, nx)
-    bad_stack = np.isnan(data_stack)  # True = excluded voxel
+    has_var = all(c.var is not None for c in cubes)
+    var_out = None
+    if has_var:
+        var_stack = np.stack(
+            [np.ma.filled(c.var, np.nan).astype(float) for c in cubes], axis=0
+        )
+        with np.errstate(invalid='ignore'):
+            var_out = np.nansum(var_stack, axis=0) / n_safe**2
+        var_out[all_nan] = np.nan
 
-    all_bad = bad_stack.all(axis=0)
+    def make_cube(method_):
+        c = cubes[0].copy()
+        c.data = _combine(data_stack, n_map, method_)
+        if has_var:
+            c.var = var_out.copy()
+        return c
 
-  
-    median_data = np.nanmedian(data_stack, axis=0)
-    median_data[all_bad] = np.nan
-    stacked.data = median_data
+    primary = make_cube(method)
+    mean_cube = primary if method == "mean" else make_cube("mean")
 
-    #n_stack: how many cubes actually contributed (finite) at each voxel
-    
-    n_stack = (~bad_stack).sum(axis=0).astype(np.int32)  # (nz, ny, nx)
-
-    # exptime: sum of EXPTIME for cubes finite at that voxel 
-    exptimes = np.array([get_exptime(c, p) for c, p in zip(cubes, paths)])
-
-    # broadcast each cube's scalar exptime, zero it out where that cube is NaN there
-    exptime_per_cube = exptimes[:, None, None, None] * (~bad_stack)
-    exptime_cube = exptime_per_cube.sum(axis=0)  # (nz, ny, nx)
-
-    #  variance: sum(var_i) / n^2 
-    # read  from FITS extension [1] of each input cube
-    var_stack = np.stack([fits.getdata(p, ext=1).astype(float) for p in paths], axis=0)
- 
-    # treat var as excluded wherever the data was NaN, or the var itself is NaN
-    var_bad = bad_stack | np.isnan(var_stack)
-    var_stack_filled = np.where(var_bad, 0.0, var_stack)
-    var_sum = var_stack_filled.sum(axis=0)  # (nz, ny, nx)
- 
-    # recompute n using var-specific validity, in case var has extra NaNs data doesn't
-    n_for_var = (~var_bad).sum(axis=0)
- 
-    
-    var_cube = np.where(n_for_var > 0, var_sum / n_for_var**2, np.nan)
-    stacked.var = var_cube
- 
-   
-
-    return stacked, n_stack, exptime_cube, var_cube
-
-
-def write_output(stacked, n_stack, exptime_cube, var_cube, output_path):
-    """Write the mpdaf-stacked cube, then append NSTACK/EXPTIME extensions."""
-    stacked.write(output_path)
-
-    with fits.open(output_path, mode="update") as hdul:
-        nstack_hdu = fits.ImageHDU(data=n_stack.astype(np.int32), name="NSTACK")
-        exptime_hdu = fits.ImageHDU(data=exptime_cube.astype(np.float32), name="EXPTIME")
-        var_hdu = fits.ImageHDU(data=var_cube.astype(np.float32), name="VAR")
-        hdul.append(var_hdu)
-        hdul.append(nstack_hdu)
-        hdul.append(exptime_hdu)
-        hdul.flush()
+    return primary, mean_cube, n_map
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stack (median) multiple MUSE cubes.")
+    parser = argparse.ArgumentParser(description="Stack multiple MUSE cubes (sum, mean, or median).")
     parser.add_argument("cubes", nargs="*", help="Paths to cube FITS files to stack")
     parser.add_argument("--dir", help="Directory to glob cubes from, instead of listing paths")
     parser.add_argument("--pattern", default="*.fits", help="Glob pattern used with --dir (default: *.fits)")
+    parser.add_argument("--method", default="median", choices=["sum", "mean", "median"],
+                         help="Which combination becomes the primary DATA extension "
+                              "(default: median). The mean stack is always saved too, "
+                              "as an extra MEAN extension.")
     parser.add_argument("-o", "--output", required=True, help="Output FITS path for the stacked cube")
     args = parser.parse_args()
 
@@ -143,24 +132,38 @@ def main():
     if len(paths) < 2:
         sys.exit("[ERROR] Need at least 2 cubes to stack.")
 
-    print(f"[INFO] Stacking {len(paths)} cubes (median):")
+    print(f"[INFO] Stacking {len(paths)} cubes using method='{args.method}':")
     for p in paths:
         print(f"    {p}")
 
     cubes = load_cubes(paths)
 
-    stacked, n_stack, exptime_cube, var_cube = stack_cubes(cubes, paths)
+    primary, mean_cube, n_map = stack_cubes(cubes, method=args.method)
+
+    primary.primary_header['NCUBES'] = (len(cubes), 'number of input cubes stacked')
+    primary.primary_header['STACKMTH'] = (args.method, 'method used for primary DATA extension')
 
     out_dir = os.path.dirname(args.output)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
+    primary.write(args.output)
 
-    write_output(stacked, n_stack, exptime_cube, var_cube, args.output)
-    print(f"[INFO] Stacked cube written to {args.output}")
-    print("[INFO]   DATA extension: median-combined flux")
-    print("[INFO]   VAR extension:  sum(var_i) / n^2")
-    print("[INFO]   NSTACK extension: number of cubes contributing per voxel")
-    print("[INFO]   EXPTIME extension: summed exposure time per voxel")
+    with fits.open(args.output, mode='update') as hdul:
+        n_hdu = fits.ImageHDU(data=n_map.astype(np.int16), name='NCUBES_MAP')
+        n_hdu.header['COMMENT'] = 'number of input cubes contributing at each voxel'
+        hdul.append(n_hdu)
+
+        mean_hdu = fits.ImageHDU(data=np.asarray(mean_cube.data), name='MEAN')
+        mean_hdu.header['COMMENT'] = 'mean-combined stack (saved regardless of --method)'
+        hdul.append(mean_hdu)
+        if mean_cube.var is not None:
+            meanvar_hdu = fits.ImageHDU(data=np.asarray(mean_cube.var), name='MEAN_VAR')
+            hdul.append(meanvar_hdu)
+
+        hdul.flush()
+
+    print(f"[INFO] Stacked cube written to {args.output} "
+          f"(primary='{args.method}', plus NCUBES_MAP and MEAN extensions)")
 
 
 if __name__ == "__main__":
