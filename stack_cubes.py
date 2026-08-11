@@ -92,21 +92,22 @@ def stack_cubes(cubes, paths):
     exptime_per_cube = exptimes[:, None, None, None] * (~bad_stack)
     exptime_cube = exptime_per_cube.sum(axis=0)  # (nz, ny, nx)
 
-    # variance: sum(var_i) / n^2, only where every cube has var 
-    var_cube = None
-    if all(c.var is not None for c in cubes):
-        var_stack = np.stack([np.asarray(c.var) for c in cubes], axis=0)
-        # treat var as excluded wherever the data was NaN, or the var itself is NaN
-        var_bad = bad_stack | np.isnan(var_stack)
-        var_stack_filled = np.where(var_bad, 0.0, var_stack)
-        var_sum = var_stack_filled.sum(axis=0)  # (nz, ny, nx)
-
-        # recompute n using var-specific validity, in case var has extra NaNs data doesn't
-        n_for_var = (~var_bad).sum(axis=0)
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            var_cube = np.where(n_for_var > 0, var_sum / n_for_var**2, np.nan)
-        stacked.var = var_cube
+    #  variance: sum(var_i) / n^2 
+    # read  from FITS extension [1] of each input cube
+    var_stack = np.stack([fits.getdata(p, ext=1).astype(float) for p in paths], axis=0)
+ 
+    # treat var as excluded wherever the data was NaN, or the var itself is NaN
+    var_bad = bad_stack | np.isnan(var_stack)
+    var_stack_filled = np.where(var_bad, 0.0, var_stack)
+    var_sum = var_stack_filled.sum(axis=0)  # (nz, ny, nx)
+ 
+    # recompute n using var-specific validity, in case var has extra NaNs data doesn't
+    n_for_var = (~var_bad).sum(axis=0)
+ 
+    
+    var_cube = np.where(n_for_var > 0, var_sum / n_for_var**2, np.nan)
+    stacked.var = var_cube
+ 
     else:
         print("[WARNING] Not every cube has a variance extension - skipping VAR propagation.")
 
