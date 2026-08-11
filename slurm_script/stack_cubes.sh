@@ -13,5 +13,4 @@ conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
 
-python stack_cubes.py ADP.2016-06-21T00:31:05.324_vac_PSFSUBBED_fully_cropped_processed_cube_masked.fits ADP.2016-07-12T14:10:36.607_vac_PSFSUBBED_fully_cropped_processed_cube_masked.fits ADP.2016-08-08T11:40:19.878_vac_PSFSUBBED_fully_cropped_processed_cube_masked.fits ADP.2016-11-16T15:11:46.454_vac_PSFSUBBED_fully_cropped_processed_cube_masked.fits -o four_stacked.fits
-
+python stack_cubes.py --/carnegie/scidata/groups/muse_stacking/CASSI_26/masked -o withvar_stacked.fits
