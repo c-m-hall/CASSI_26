@@ -113,7 +113,7 @@ def stack_cubes(cubes, paths):
     return stacked, n_stack, exptime_cube, var_cube
 
 
-def write_output(stacked, n_stack, exptime_cube, output_path):
+def write_output(stacked, n_stack, exptime_cube, var_cube, output_path):
     """Write the mpdaf-stacked cube, then append NSTACK/EXPTIME extensions."""
     stacked.write(output_path)
 
@@ -155,7 +155,7 @@ def main():
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
 
-    write_output(stacked, n_stack, exptime_cube, args.output)
+    write_output(stacked, n_stack, exptime_cube, var_cube, args.output)
     print(f"[INFO] Stacked cube written to {args.output}")
     print("[INFO]   DATA extension: median-combined flux")
     print("[INFO]   VAR extension:  sum(var_i) / n^2")
