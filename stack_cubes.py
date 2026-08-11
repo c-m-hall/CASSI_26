@@ -120,6 +120,8 @@ def write_output(stacked, n_stack, exptime_cube, output_path):
     with fits.open(output_path, mode="update") as hdul:
         nstack_hdu = fits.ImageHDU(data=n_stack.astype(np.int32), name="NSTACK")
         exptime_hdu = fits.ImageHDU(data=exptime_cube.astype(np.float32), name="EXPTIME")
+        var_hdu = fits.ImageHDU(data=var_cube.astype(np.float32), name="VAR")
+        hdul.append(var_hdu)
         hdul.append(nstack_hdu)
         hdul.append(exptime_hdu)
         hdul.flush()
