@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --job-name=process_cubes_test
+#SBATCH --partition=obs
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=12G
+#SBATCH --time=2:00:00
+#SBATCH --output=slurm_script/process_cubes_test_%A.out
+#SBATCH --error=slurm_script/process_cubes_test_%A.err
+
+module load conda
+conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
+
+python run_pipeline.py --download --indices 99 --max-gb 50 \
+    --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
