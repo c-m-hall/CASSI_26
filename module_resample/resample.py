@@ -209,7 +209,9 @@ def resample_main(z,cubepath, pixscale):
     primary_hdu.header["DV_KMS"] = 25.0
     primary_hdu.header["Z"] = z
     
-    error_hdu = fits.ImageHDU(data=f_v_err)
+    var_v = f_v_err ** 2
+
+    error_hdu = fits.ImageHDU(data=var_v)
     error_hdu.name = "VAR"
     
     vgrid_hdu = fits.ImageHDU(data=v_grid)
