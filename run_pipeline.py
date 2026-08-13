@@ -83,7 +83,9 @@ if __name__ == "__main__":
                          "'resample' additionally reuses existing mask/crop "
                          "(default: 'download', runs every stage)")
     args = p.parse_args()
-
+    
+    print("run-pipeline successful!")
+          
     run(download=args.download, n_fields=args.n_fields, max_gb=args.max_gb,
         sex_config=args.sex_config, sex_binary=args.sex_binary,
         field_indices=args.field_indices, resume_from=args.resume_from)
