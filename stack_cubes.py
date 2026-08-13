@@ -44,10 +44,10 @@ def load_cubes(paths):
     return cubes
 
 
+ 
 def load_var_arrays(paths, ext=1):
-    """Read the variance array directly from extension `ext` (default: 1)
-    for every path, NOT via mpdaf's Cube.var (which expects an extension
-    named 'STAT' and won't reliably find one named 'VAR'). Returns a list
+    """Read the variance array directly from  ext 1
+    for every path. Returns a list
     of numpy arrays, same shape as the corresponding cube's data.
     """
     var_arrays = []
@@ -60,8 +60,8 @@ def load_var_arrays(paths, ext=1):
                 )
             var_arrays.append(np.asarray(hdul[ext].data, dtype=float))
     return var_arrays
-
-
+ 
+ 
 def _combine(data_stack, n_map, method):
     """Combine an (N, ...) stack of arrays along axis 0, NaN-aware."""
     all_nan = n_map == 0
@@ -76,20 +76,20 @@ def _combine(data_stack, n_map, method):
             raise ValueError(f"Unknown method '{method}'; expected 'sum', 'mean', or 'median'")
     out[all_nan] = np.nan
     return out
-
-
+ 
+ 
 def stack_cubes(cubes, paths, method="median"):
     """Combine data arrays together, ignoring NaNs (masked spaxels are NaN).
-
+ 
     Always computes both a mean stack and a median stack; `method` picks
     which one (or 'sum') is returned as the primary result.
-
+ 
     method : {'sum', 'mean', 'median'}
         Which combination becomes the primary output.
-
+ 
     A voxel is NaN in the output only if it's NaN in every single input
     cube; otherwise it's combined over whichever inputs are finite there.
-
+ 
     Returns
     -------
     primary : mpdaf.obj.Cube
@@ -108,11 +108,11 @@ def stack_cubes(cubes, paths, method="median"):
     n_map = finite_stack.sum(axis=0)
     n_safe = np.maximum(n_map, 1)
     all_nan = n_map == 0
-
-    # variance, read directly from extension [1]
+ 
+    # variance, read directly from extension [1] 
     var_arrays = load_var_arrays(paths, ext=1)
     var_stack = np.stack(var_arrays, axis=0)
-
+ 
     if var_stack.shape != data_stack.shape:
         raise ValueError(
             f"VAR stack shape {var_stack.shape} doesn't match DATA stack "
@@ -120,27 +120,25 @@ def stack_cubes(cubes, paths, method="median"):
             f"extension is on the same grid as its DATA extension."
         )
 
-    # treat a voxel as excluded from the variance sum wherever the DATA
-    # was NaN there (finite_stack, from data_stack) -- keeps var's voxel
-    # count consistent with the data's voxel count, rather than trusting
-    # var's own NaN pattern independently
-    var_stack_masked = np.where(finite_stack, var_stack, np.nan)
-    with np.errstate(invalid='ignore'):
-        var_out = np.nansum(var_stack_masked, axis=0) / n_safe**2
-    var_out[all_nan] = np.nan
 
+    finite_var = ~np.isnan(var_stack)
+    n_var = finite_var.sum(axis=0)
+    n_var_safe = np.maximum(n_var, 1)
+    var_out = np.nansum(var_stack, axis=0) / n_var_safe**2
+     
+ 
     def make_cube(method_):
         c = cubes[0].copy()
         c.data = _combine(data_stack, n_map, method_)
         c.var = var_out.copy()
         return c
-
+ 
     primary = make_cube(method)
     mean_cube = primary if method == "mean" else make_cube("mean")
-
+ 
     return primary, mean_cube, n_map
-
-
+ 
+ 
 def main():
     parser = argparse.ArgumentParser(description="Stack multiple MUSE cubes (sum, mean, or median).")
     parser.add_argument("cubes", nargs="*", help="Paths to cube FITS files to stack")
@@ -152,48 +150,67 @@ def main():
                               "as an extra MEAN extension.")
     parser.add_argument("-o", "--output", required=True, help="Output FITS path for the stacked cube")
     args = parser.parse_args()
-
+ 
     if args.dir:
         paths = sorted(glob.glob(os.path.join(args.dir, args.pattern)))
     else:
         paths = args.cubes
-
+ 
     if len(paths) < 2:
         sys.exit("[ERROR] Need at least 2 cubes to stack.")
-
+ 
     print(f"[INFO] Stacking {len(paths)} cubes using method='{args.method}':")
     for p in paths:
         print(f"    {p}")
-
+ 
     cubes = load_cubes(paths)
-
+ 
     primary, mean_cube, n_map = stack_cubes(cubes, paths, method=args.method)
-
+ 
     primary.primary_header['NCUBES'] = (len(cubes), 'number of input cubes stacked')
     primary.primary_header['STACKMTH'] = (args.method, 'method used for primary DATA extension')
-
+ 
+    # BUNIT: the true physical unit of the DATA/VAR arrays after
+    # resample_main.py's to_luminosity_surface_density() conversion --
+    # NOT flux density, this is rest-frame luminosity surface density
+    # per unit velocity. Stacking (sum/mean/median, all NaN-aware) never
+    # changes what unit the values are in, so this is just carried
+    # forward from the input cubes rather than recomputed.
+    primary.primary_header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
+ 
     out_dir = os.path.dirname(args.output)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     primary.write(args.output)
-
+ 
     with fits.open(args.output, mode='update') as hdul:
+        # mpdaf's Cube.write() creates its own DATA/STAT extensions for the
+        # primary stack -- stamp BUNIT there too (index 0 = primary header,
+        # already set above; index 1 = DATA, index 2 = STAT/variance, if
+        # present). Variance is in squared units of the data.
+        if len(hdul) > 1 and hdul[1].data is not None:
+            hdul[1].header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
+        if len(hdul) > 2 and hdul[2].data is not None:
+            hdul[2].header['BUNIT'] = '(erg/s/(km/s)/kpc^2)^2'
+ 
         n_hdu = fits.ImageHDU(data=n_map.astype(np.int16), name='NCUBES_MAP')
         n_hdu.header['COMMENT'] = 'number of input cubes contributing at each voxel'
         hdul.append(n_hdu)
-
+ 
         mean_hdu = fits.ImageHDU(data=np.asarray(mean_cube.data), name='MEAN')
         mean_hdu.header['COMMENT'] = 'mean-combined stack (saved regardless of --method)'
+        mean_hdu.header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
         hdul.append(mean_hdu)
         if mean_cube.var is not None:
             meanvar_hdu = fits.ImageHDU(data=np.asarray(mean_cube.var), name='MEAN_VAR')
+            meanvar_hdu.header['BUNIT'] = '(erg/s/(km/s)/kpc^2)^2'
             hdul.append(meanvar_hdu)
-
+ 
         hdul.flush()
-
+ 
     print(f"[INFO] Stacked cube written to {args.output} "
           f"(primary='{args.method}', plus NCUBES_MAP and MEAN extensions)")
-
-
+ 
+ 
 if __name__ == "__main__":
     main()
