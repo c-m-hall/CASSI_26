@@ -16,6 +16,8 @@ which one becomes the primary DATA extension in the output file, and the
 mean stack is always additionally saved as a MEAN extension (with its
 variance as MEAN_VAR) regardless of --method.
 
+Variance is read directly from each input file's extension [1] 
+
 Usage:
     # List cubes explicitly
     python stack_cubes.py cube1.fits cube2.fits cube3.fits -o stacked.fits
@@ -42,6 +44,24 @@ def load_cubes(paths):
     return cubes
 
 
+def load_var_arrays(paths, ext=1):
+    """Read the variance array directly from extension `ext` (default: 1)
+    for every path, NOT via mpdaf's Cube.var (which expects an extension
+    named 'STAT' and won't reliably find one named 'VAR'). Returns a list
+    of numpy arrays, same shape as the corresponding cube's data.
+    """
+    var_arrays = []
+    for p in paths:
+        with fits.open(p) as hdul:
+            if ext >= len(hdul):
+                raise IndexError(
+                    f"{p}: has only {len(hdul)} extension(s), no extension [{ext}] "
+                    f"to read variance from."
+                )
+            var_arrays.append(np.asarray(hdul[ext].data, dtype=float))
+    return var_arrays
+
+
 def _combine(data_stack, n_map, method):
     """Combine an (N, ...) stack of arrays along axis 0, NaN-aware."""
     all_nan = n_map == 0
@@ -58,7 +78,7 @@ def _combine(data_stack, n_map, method):
     return out
 
 
-def stack_cubes(cubes, method="median"):
+def stack_cubes(cubes, paths, method="median"):
     """Combine data arrays together, ignoring NaNs (masked spaxels are NaN).
 
     Always computes both a mean stack and a median stack; `method` picks
@@ -89,21 +109,30 @@ def stack_cubes(cubes, method="median"):
     n_safe = np.maximum(n_map, 1)
     all_nan = n_map == 0
 
-    has_var = all(c.var is not None for c in cubes)
-    var_out = None
-    if has_var:
-        var_stack = np.stack(
-            [np.ma.filled(c.var, np.nan).astype(float) for c in cubes], axis=0
+    # variance, read directly from extension [1]
+    var_arrays = load_var_arrays(paths, ext=1)
+    var_stack = np.stack(var_arrays, axis=0)
+
+    if var_stack.shape != data_stack.shape:
+        raise ValueError(
+            f"VAR stack shape {var_stack.shape} doesn't match DATA stack "
+            f"shape {data_stack.shape} -- check that every file's VAR "
+            f"extension is on the same grid as its DATA extension."
         )
-        with np.errstate(invalid='ignore'):
-            var_out = np.nansum(var_stack, axis=0) / n_safe**2
-        var_out[all_nan] = np.nan
+
+    # treat a voxel as excluded from the variance sum wherever the DATA
+    # was NaN there (finite_stack, from data_stack) -- keeps var's voxel
+    # count consistent with the data's voxel count, rather than trusting
+    # var's own NaN pattern independently
+    var_stack_masked = np.where(finite_stack, var_stack, np.nan)
+    with np.errstate(invalid='ignore'):
+        var_out = np.nansum(var_stack_masked, axis=0) / n_safe**2
+    var_out[all_nan] = np.nan
 
     def make_cube(method_):
         c = cubes[0].copy()
         c.data = _combine(data_stack, n_map, method_)
-        if has_var:
-            c.var = var_out.copy()
+        c.var = var_out.copy()
         return c
 
     primary = make_cube(method)
@@ -138,7 +167,7 @@ def main():
 
     cubes = load_cubes(paths)
 
-    primary, mean_cube, n_map = stack_cubes(cubes, method=args.method)
+    primary, mean_cube, n_map = stack_cubes(cubes, paths, method=args.method)
 
     primary.primary_header['NCUBES'] = (len(cubes), 'number of input cubes stacked')
     primary.primary_header['STACKMTH'] = (args.method, 'method used for primary DATA extension')
