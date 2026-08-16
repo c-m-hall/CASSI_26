@@ -5,9 +5,9 @@
 #SBATCH --time=24:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
- 
-# adjust to your actual conda env / module setup
-source /carnegie/scidata/groups/muse_stacking/conda_envs/cassi/bin/activate cassi
+
+module load conda
+conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
  
 
