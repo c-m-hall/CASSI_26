@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=cassi_process
 #SBATCH --output=slurm_script/cassi_process_%j.out
 #SBATCH --error=slurm_script/cassi_process_%j.err
