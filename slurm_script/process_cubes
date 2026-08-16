@@ -11,5 +11,7 @@
 module load conda
 conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
+cd /carnegie/scidata/groups/muse_stacking/CASSI_26
+
 python run_pipeline.py --download --n-fields 3 --max-gb 50 \
     --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
