@@ -13,6 +13,9 @@ conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
  
-python build_pairs_from_scratch.py --scratch-dir /carnegie/scidata/groups/muse_stacking/CASSI_26/scratch/
---sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
-
+python build_pairs_from_scratch.py \
+    --scratch-dir /carnegie/scidata/groups/muse_stacking/CASSI_26/scratch \
+    --pairs-path /carnegie/scidata/groups/muse_stacking/CASSI_26/muse_x_milliquas_pairs.fits \
+    --sample-path /carnegie/scidata/groups/muse_stacking/CASSI_26/muse_x_milliquas_sample.fits \
+    --pairs-out /carnegie/scidata/groups/muse_stacking/CASSI_26/muse_x_milliquas_pairs_local.fits \
+    --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
