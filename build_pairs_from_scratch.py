@@ -1,4 +1,3 @@
-
 """
 build_pairs_from_scratch.py
  
@@ -13,25 +12,29 @@ field selection you don't have handy anymore.
 Then immediately runs the rest of the pipeline (mainscript.main(), i.e.
 convert_wl onward) on exactly the cubes found.
  
+Usage:
+    python build_pairs_from_scratch.py --scratch-dir ./scratch/
 """
  
 import argparse
 import os
  
+import numpy as np
 from astropy.table import Table
  
 import mainscript
  
  
 def build_pairs_from_scratch(pairs_path, scratch_dir, pairs_out):
-    """(Name, cube_filename) for every cube actually present in
-    scratch_dir, matched via the full dp_id -> Name table.
+    """(Name, cube_filename, exptime) for every cube actually present in
+    scratch_dir, matched via the full dp_id -> Name/t_exptime table.
  
     Assumes ESO Phase-3 downloads are saved as <dp_id>.fits (the
     astroquery default), so a file's dp_id is just its filename stem.
     """
-    pairs = Table.read(pairs_path)  # full table: has 'dp_id' and 'Name' columns
+    pairs = Table.read(pairs_path)  # full table: has 'dp_id', 'Name', 't_exptime' columns
     dpid_to_name = dict(zip(pairs['dp_id'].astype(str), pairs['Name'].astype(str)))
+    dpid_to_exptime = dict(zip(pairs['dp_id'].astype(str), pairs['t_exptime']))
  
     rows = []
     unmatched = []
@@ -43,9 +46,10 @@ def build_pairs_from_scratch(pairs_path, scratch_dir, pairs_out):
         if name is None:
             unmatched.append(fname)
             continue
-        rows.append((name, fname))
+        exptime = float(dpid_to_exptime.get(dp_id, np.nan))
+        rows.append((name, fname, exptime))
  
-    table = Table(rows=rows, names=('Name', 'cube_filename'))
+    table = Table(rows=rows, names=('Name', 'cube_filename', 'exptime'))
     table.write(pairs_out, overwrite=True)
  
     print(f"{len(table)} cube(s) in {scratch_dir!r} matched to a QSO name "
