@@ -7,11 +7,8 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=slurm_script/process_cubes_%A.out
 #SBATCH --error=slurm_script/process_cubes_%A.err
-
 module load conda
 conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
-
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
-
-python run_pipeline.py --download --n-fields 80 --max-gb 1000 \
+python run_pipeline.py --resume-from resample \
     --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
