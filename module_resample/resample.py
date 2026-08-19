@@ -208,7 +208,25 @@ def resample_main(z,cubepath, pixscale):
     primary_hdu.header["PIX_KPC"] = 2.0
     primary_hdu.header["DV_KMS"] = 25.0
     primary_hdu.header["Z"] = z
-    
+
+    # Spatial WCS -- spatial_resample_to_kpc/_center_crop_or_pad only ever
+    # operate on plain numpy arrays, so without this the output cube has NO
+    # spatial WCS at all and downstream tools (mpdaf, DS9, stack_cubes.py)
+    # fall back to a meaningless default grid. Linear physical-offset WCS in
+    # kpc, centered on the QSO (which _center_crop_or_pad keeps at the array
+    # center by construction).
+    ny_out, nx_out = f_v.shape[1], f_v.shape[2]
+    primary_hdu.header["CTYPE1"] = "LINEAR"
+    primary_hdu.header["CTYPE2"] = "LINEAR"
+    primary_hdu.header["CUNIT1"] = "kpc"
+    primary_hdu.header["CUNIT2"] = "kpc"
+    primary_hdu.header["CDELT1"] = 2.0          # kpc/pixel, matches PIX_KPC
+    primary_hdu.header["CDELT2"] = 2.0
+    primary_hdu.header["CRPIX1"] = nx_out // 2 + 1   # 1-indexed FITS convention
+    primary_hdu.header["CRPIX2"] = ny_out // 2 + 1
+    primary_hdu.header["CRVAL1"] = 0.0          # 0 kpc = QSO position
+    primary_hdu.header["CRVAL2"] = 0.0
+
     var_v = f_v_err ** 2
 
     error_hdu = fits.ImageHDU(data=var_v)
@@ -394,6 +412,7 @@ def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
     hdul_out.writeto(output_filename, overwrite=True)
 
     return output_filename
+
 
 
 # example usage
