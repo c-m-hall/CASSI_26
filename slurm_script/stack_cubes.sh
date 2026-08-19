@@ -3,8 +3,8 @@
 #SBATCH --partition=obs
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=15G
-#SBATCH --time=02:00:00
+#SBATCH --mem=30G
+#SBATCH --time=10:00:00
 #SBATCH --output=/carnegie/scidata/groups/muse_stacking/CASSI_26/slurm_script/stack_cubes_%A.out
 #SBATCH --error=/carnegie/scidata/groups/muse_stacking/CASSI_26/slurm_script/stack_cubes_%A.err
 
