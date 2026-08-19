@@ -273,12 +273,27 @@ print("output cube shape (nvel, ny, nx):", f_v.shape)
 # common velocity grid), but conservative: nearest-neighbor spatially and
 # OR-downsampled spectrally, so a mask value never becomes a fraction and a
 # flagged voxel never gets interpolated away.
+#
+# NOTE ON CONVENTION: on disk (both the input mask from build_mask_main and
+# the output of resample_mask_main), 1/True = GOOD voxel, 0/False = BAD
+# (object OR sky) -- this matches build_mask_main's explicit on-disk
+# convention. The two helpers below (_spatial_resample_mask_to_kpc and
+# _spectral_resample_mask) are written the opposite way, internally, for
+# good reason: their padding and OR-combination logic is only conservative
+# if True means BAD (pad = bad, "flag bad if any contributing channel was
+# bad"). So resample_mask_main inverts the mask right after loading it and
+# inverts back right before saving -- the helpers themselves should NOT be
+# changed to take True=good input, since that would make the padding and
+# OR-combination behave incorrectly.
 
 
 def _spatial_resample_mask_to_kpc(mask, pixscale_arcsec, z,
                                    target_kpc=2.0, output_kpc=200.0):
     """Same geometry as spatial_resample_to_kpc, but nearest-neighbor
-    (order=0) so mask values stay exactly 0 or 1 """
+    (order=0) so mask values stay exactly 0 or 1.
+
+    Expects/returns True = BAD (see convention note above resample_mask_main).
+    """
     kpc_per_arcsec = 1.0 / COSMO.arcsec_per_kpc_proper(z).value
     old_pix_kpc = pixscale_arcsec * kpc_per_arcsec
     zoom_factor = old_pix_kpc / target_kpc
@@ -306,7 +321,10 @@ def _spectral_resample_mask(mask, wave_native, wave_new):
     """OR-downsample the mask onto wave_new: a new bin is flagged bad if
     ANY native channel falling in that bin was bad (conservative -- never
     silently un-flags a voxel through interpolation, unlike a flux-style
-    rebin would)."""
+    rebin would).
+
+    Expects/returns True = BAD (see convention note above resample_mask_main).
+    """
     edges = np.concatenate((
         [wave_new[0] - (wave_new[1] - wave_new[0]) / 2],
         (wave_new[:-1] + wave_new[1:]) / 2,
@@ -328,9 +346,15 @@ def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
     """Resample an (already cropped) mask onto the same 2 kpc/pixel spatial
     grid and common velocity grid that resample_main puts the science cube
     on, so the two line up voxel-for-voxel. Saves '<mask>_processed_mask.fits'.
+
+    On disk (both input and output): 1 = good voxel, 0 = bad (object OR sky),
+    matching build_mask_main's convention. The resampling helpers used here
+    internally assume True = bad (so that edge-padding and OR-combination
+    are conservative), so the mask is inverted on the way in and inverted
+    back on the way out -- the helpers themselves are untouched.
     """
     with fits.open(maskpath) as hdul:
-        mask = hdul[0].data.astype(bool)
+        mask = hdul[0].data.astype(bool)   # on-disk: True = good
         header = hdul[0].header
 
         nwave = header['NAXIS3']
@@ -341,15 +365,21 @@ def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
         pixel_indices = np.arange(nwave)
         wave_native = crval + (pixel_indices + 1 - crpix) * cdelt
 
-    mask_s = _spatial_resample_mask_to_kpc(mask, pixscale, z, target_kpc, output_kpc)
+    # flip to the internal True=bad convention the helpers below expect
+    bad = ~mask
+
+    bad_s = _spatial_resample_mask_to_kpc(bad, pixscale, z, target_kpc, output_kpc)
 
     v_grid = build_velocity_grid(dv=dv)
     wave_new = velocity_to_obs_wavelength(v_grid, z)
-    mask_v = _spectral_resample_mask(mask_s, wave_native, wave_new)
+    bad_v = _spectral_resample_mask(bad_s, wave_native, wave_new)
+
+    # flip back to the on-disk True=good convention before saving
+    mask_v = ~bad_v
 
     primary_hdu = fits.PrimaryHDU(data=mask_v.astype(np.uint8))
     primary_hdu.name = "MASK"
-    primary_hdu.header['COMMENT'] = '1 = bad voxel (object OR sky), 0 = good'
+    primary_hdu.header['COMMENT'] = '1 = good voxel, 0 = bad (object OR sky)'
     primary_hdu.header['PIX_KPC'] = target_kpc
     primary_hdu.header['DV_KMS'] = dv
     primary_hdu.header['Z'] = z
