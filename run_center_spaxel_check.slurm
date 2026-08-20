@@ -17,16 +17,16 @@
 #   DATA_DIR     - directory containing the *_masked.fits cubes
 #   OUT_CSV      - where to write the results CSV
 #   FILE_GLOB    - pattern matching your masked cube files
-#   MODE         - "all" (default), "any", or "plane"
+#   MODE         - "all" (default), "any", or "middle"
 # ------------------------------------------------------------------------
 
 set -euo pipefail
 
-SCRIPT_PATH="/path/to/check_center_spaxel_mask.py"
-DATA_DIR="/path/to/masked_cubes"
-OUT_CSV="/path/to/output/center_spaxel_nan_results.csv"
+SCRIPT_PATH="/carnegie/scidata/groups/muse_stacking/CASSI_26/check_center_spaxel_mask.py"
+DATA_DIR="/carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/masked"
+OUT_CSV="/carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/results/center_spaxel_nan_results.csv"
 FILE_GLOB="*_masked.fits"
-MODE="all"
+MODE="middle"
 
 # Activate your environment here if needed, e.g.:
 # module load python/3.11
