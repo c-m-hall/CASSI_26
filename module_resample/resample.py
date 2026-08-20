@@ -48,17 +48,29 @@ def _center_crop_or_pad(cube, ny_out, nx_out):
 
 
 def spatial_resample_to_kpc(cube, pixscale_arcsec, z,
-                            target_kpc=2.0, output_kpc=200.0, order=1):
+                            target_kpc=2.0, output_kpc=200.0, order=1,
+                            is_variance=False):
     
 
     """Resample each wavelength plane to `target_kpc` pixels, then place them on a
     fixed `output_kpc` x `output_kpc` footprint centered on the cube.
 
-    cube            : (nwave, ny, nx) flux-per-spaxel array 
+    cube            : (nwave, ny, nx) flux-per-spaxel array (or variance-per-spaxel
+                      if is_variance=True)
     pixscale_arcsec : native pixel size on sky [arcsec] -> 
     target_kpc      : output pixel size [kpc] -> 
     output_kpc      : output field-of-view on a side [kpc] (crop larger, NaN-pad smaller)
-    Returns the resampled cube, still flux-per-spaxel, with flux conserved.
+    is_variance     : set True when `cube` holds variance rather than flux.
+                      Interpolating variance directly (rather than sigma) is
+                      the standard way to carry errors through a spatial
+                      resample -- interpolating sigma linearly effectively
+                      sums per-pixel errors instead of adding them in
+                      quadrature, which overestimates the propagated noise.
+                      The pixel-area rescale needed for conservation also
+                      enters variance squared relative to flux, since
+                      Var(a*X) = a^2 * Var(X) for a linear rescale a.
+    Returns the resampled cube, still flux-per-spaxel (or variance-per-spaxel),
+    with flux (or variance) conserved.
     
     """
     # Physical size of a native pixel at this redshift (proper kpc per pixel).
@@ -73,7 +85,9 @@ def spatial_resample_to_kpc(cube, pixscale_arcsec, z,
     resampled = ndimage.zoom(cube, (1.0, zoom_factor, zoom_factor), order=order)
 
     # Flux conservation: rescale by the pixel-AREA ratio (area_after / area_before).
-    flux_scale = (target_kpc / old_pix_kpc) ** 2
+    # For variance this ratio is squared (see is_variance docstring above).
+    area_ratio = (target_kpc / old_pix_kpc) ** 2
+    flux_scale = area_ratio ** 2 if is_variance else area_ratio
     resampled *= flux_scale
 
     # Force a common physical footprint so every field lands on identical axes:
@@ -139,10 +153,22 @@ def to_luminosity_surface_density(f_lam_cube, wave_obs_new, z,
 
 def process_field(cube, wave_native, err_cube, pixscale_arcsec, z,
                   target_kpc=2.0, dv=25.0):
-    """Full per-field pipeline. Returns (ell_v cube, ell_v error cube, v_grid)."""
+    """Full per-field pipeline. Returns (ell_v cube, ell_v error cube, v_grid).
+
+    err_cube is sigma in, sigma out (matching spectral_resample's convention
+    and the caller in resample_main). Internally, the SPATIAL resample step
+    is done in variance space -- err_cube is squared, resampled with
+    is_variance=True, then square-rooted back to sigma -- while the SPECTRAL
+    resample step still runs on sigma, since spectres expects spec_errs as
+    standard deviations.
+    """
     # 1. spatial -> 2 kpc/pixel
     cube_s = spatial_resample_to_kpc(cube, pixscale_arcsec, z, target_kpc)
-    err_s = spatial_resample_to_kpc(err_cube, pixscale_arcsec, z, target_kpc)
+
+    var_cube = err_cube ** 2
+    var_s = spatial_resample_to_kpc(var_cube, pixscale_arcsec, z, target_kpc,
+                                     is_variance=True)
+    err_s = np.sqrt(var_s)
 
     # 2. spectral -> common 25 km/s grid (built once, reused for every field)
     v_grid = build_velocity_grid(dv=dv)
@@ -412,6 +438,7 @@ def resample_mask_main(z, maskpath, pixscale, dv=25.0, target_kpc=2.0,
     hdul_out.writeto(output_filename, overwrite=True)
 
     return output_filename
+
 
 
 
