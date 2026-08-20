@@ -6,6 +6,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=8G
+#SBATCH --output=slurm_script/check_spaxel_%A.out
+#SBATCH --error=slurm_script/check_spaxel_%A.err
 
 
 
