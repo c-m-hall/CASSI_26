@@ -18,4 +18,4 @@ conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
 
-python check_center_spaxel_mask.py /carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/masked --check-nan --glob "*_masked.fits" --mode middle -o results.csv
+python check_center_spaxel_mask.py /carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/masked --check-nan --glob "*_masked.fits" --mode plane -o results.csv
