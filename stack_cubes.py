@@ -14,7 +14,12 @@ stacking only makes sense if they line up voxel-for-voxel.
 Both a mean stack and a median stack are always computed; --method picks
 which one becomes the primary DATA extension in the output file, and the
 mean stack is always additionally saved as a MEAN extension (with its
-variance as MEAN_VAR) regardless of --method.
+variance as MEAN_STAT) regardless of --method.
+
+Note: the primary combined cube's own variance (mpdaf's "STAT" extension)
+is intentionally NOT written to the output file -- only its DATA
+extension is kept. Variance for the mean stack is still written as
+MEAN_STAT.
 
 Variance is read directly from each input file's extension [1].
 
@@ -213,14 +218,15 @@ def main():
     primary.write(args.output)
 
     with fits.open(args.output, mode='update') as hdul:
-        # mpdaf's Cube.write() creates its own DATA/VAR extensions for the
-        # primary stack -- stamp BUNIT there too (index 0 = primary header,
-        # already set above; index 1 = DATA, index 2 = variance, if
-        # present). Variance is in squared units of the data.
+        # mpdaf's Cube.write() creates its own DATA/STAT extensions for the
+        # primary stack -- stamp BUNIT on DATA (index 1 = primary header
+        # already set above; index 1 = DATA), then drop the STAT
+        # (variance) extension for the primary cube entirely, per request.
         if len(hdul) > 1 and hdul[1].data is not None:
             hdul[1].header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
-        if len(hdul) > 2 and hdul[2].data is not None:
-            hdul[2].header['BUNIT'] = '(erg/s/(km/s)/kpc^2)^2'
+
+        if 'STAT' in hdul:
+            del hdul['STAT']
 
         n_hdu = fits.ImageHDU(data=n_map.astype(np.int16), name='NCUBES_MAP')
         n_hdu.header['COMMENT'] = 'number of input cubes contributing at each voxel'
@@ -244,7 +250,8 @@ def main():
         hdul.flush()
 
     print(f"[INFO] Stacked cube written to {args.output} "
-          f"(primary='{args.method}', plus NCUBES_MAP, EXPTIME, and MEAN extensions)")
+          f"(primary='{args.method}' DATA only, no primary STAT, plus "
+          f"NCUBES_MAP, EXPTIME, MEAN, and MEAN_STAT extensions)")
 
 
 if __name__ == "__main__":
