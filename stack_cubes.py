@@ -213,9 +213,9 @@ def main():
     primary.write(args.output)
 
     with fits.open(args.output, mode='update') as hdul:
-        # mpdaf's Cube.write() creates its own DATA/STAT extensions for the
+        # mpdaf's Cube.write() creates its own DATA/VAR extensions for the
         # primary stack -- stamp BUNIT there too (index 0 = primary header,
-        # already set above; index 1 = DATA, index 2 = STAT/variance, if
+        # already set above; index 1 = DATA, index 2 = variance, if
         # present). Variance is in squared units of the data.
         if len(hdul) > 1 and hdul[1].data is not None:
             hdul[1].header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
@@ -237,7 +237,7 @@ def main():
         mean_hdu.header['BUNIT'] = 'erg/s/(km/s)/kpc^2'
         hdul.append(mean_hdu)
         if mean_cube.var is not None:
-            meanvar_hdu = fits.ImageHDU(data=np.asarray(mean_cube.var), name='MEAN_VAR')
+            meanvar_hdu = fits.ImageHDU(data=np.asarray(mean_cube.var), name='MEAN_STAT')
             meanvar_hdu.header['BUNIT'] = '(erg/s/(km/s)/kpc^2)^2'
             hdul.append(meanvar_hdu)
 
