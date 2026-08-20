@@ -52,7 +52,7 @@ def check_cube(filepath, mode="all", check_nan=False, hdu_index=0):
     mode (mask-checking ):
         "all"   -> flag if EVERY wavelength channel at the center spaxel is 0 (bad)
         "any"   -> flag if ANY wavelength channel at the center spaxel is 0 (bad)
-        "middle" -> flag if the MIDDLE wavelength channel at the center spaxel is 0 (bad)
+        "plane" -> flag if the MIDDLE wavelength channel at the center spaxel is 0 (bad)
 
     check_nan:
         If True, checks the data HDU for NaN at the center spaxel instead of
@@ -86,7 +86,7 @@ def check_cube(filepath, mode="all", check_nan=False, hdu_index=0):
                         flagged = bool(np.all(is_bad))
                     elif mode == "any":
                         flagged = bool(np.any(is_bad))
-                    elif mode == "middle":
+                    elif mode == "plane":
                         flagged = bool(is_bad[nwave // 2])
                     else:
                         raise ValueError(f"Unknown mode: {mode}")
