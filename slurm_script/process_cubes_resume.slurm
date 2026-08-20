@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH --job-name=process_cubes_resume
+#SBATCH --partition=obs
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=38G
+#SBATCH --time=48:00:00
+#SBATCH --output=slurm_script/process_cubes_resume_%A.out
+#SBATCH --error=slurm_script/process_cubes_resume_%A.err
+module load conda
+conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
+cd /carnegie/scidata/groups/muse_stacking/CASSI_26
+python resume_from_cropped.py \
+    --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
