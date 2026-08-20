@@ -14,5 +14,5 @@ conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
 
 python stack_cubes.py --dir cassi_outputs/masked \
-    -o /carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_output/results/150fields_final_stack.fits \
+    -o /carnegie/scidata/groups/muse_stacking/CASSI_26/cassi_outputs/results/NEW150fields_final_stack.fits \
     --method median
