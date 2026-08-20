@@ -108,49 +108,70 @@ def main(sample_path='muse_x_milliquas_sample.fits',
 
                 exptime = get_exptime_for_cube(pairs, cube_base)
 
-                if resume_from in ('mask', 'resample'):
-                    # skip re-running convert_wl / psf_sub; find their
-                    # already-produced outputs on disk instead
-                    vac_name = cube_base.replace('.fits', '_vac.fits')
-                    wlconv_path = os.path.join(DIR_WLCONV, vac_name)
-                    psfsub_path = os.path.join(
-                        DIR_PSFSUB, vac_name.replace('.fits', '_PSFSUBBED.fits'))
-                    if not (os.path.exists(wlconv_path) and os.path.exists(psfsub_path)):
+                # filenames each stage below writes, reconstructed from
+                # cube_base -- used any time we resume past that stage
+                # instead of re-running it
+                vac_name = cube_base.replace('.fits', '_vac.fits')
+                psfsub_base = vac_name.replace('.fits', '_PSFSUBBED.fits')
+                mask_base = vac_name.replace('.fits', '_MASK3D.fits')
+
+                if resume_from == 'resample':
+                    # skip convert_wl / psf_sub / mask-build / crop entirely;
+                    # find the already-produced crop + cropped-mask outputs
+                    # on disk instead
+                    crop_path = os.path.join(
+                        DIR_CROP, psfsub_base.replace('.fits', '_fully_cropped.fits'))
+                    mask_crop_path = os.path.join(
+                        DIR_CROP, mask_base.replace('.fits', '_fully_cropped.fits'))
+                    if not (os.path.exists(crop_path) and os.path.exists(mask_crop_path)):
                         raise FileNotFoundError(
-                            f"resume_from='{resume_from}' but missing prior output(s): "
-                            f"{wlconv_path if not os.path.exists(wlconv_path) else psfsub_path}"
+                            f"resume_from='resample' but missing prior output(s): "
+                            f"{crop_path if not os.path.exists(crop_path) else mask_crop_path}"
                         )
-                    print(f"  resuming (from '{resume_from}') using {wlconv_path}, {psfsub_path}")
+                    print(f"  resuming (from 'resample') using {crop_path}, {mask_crop_path}")
+
                 else:
-                    # 1. air-to-vacuum wavelength correction
-                    cube_dirname = os.path.dirname(cubepath) + '/'
-                    wlconv_path = convert_wl_main(cube_base, cube_dirname)
-                    wlconv_path = move_to(wlconv_path, DIR_WLCONV)
-                    set_exptime_header(wlconv_path, exptime)
+                    if resume_from == 'mask':
+                        # skip re-running convert_wl / psf_sub; find their
+                        # already-produced outputs on disk instead
+                        wlconv_path = os.path.join(DIR_WLCONV, vac_name)
+                        psfsub_path = os.path.join(DIR_PSFSUB, psfsub_base)
+                        if not (os.path.exists(wlconv_path) and os.path.exists(psfsub_path)):
+                            raise FileNotFoundError(
+                                f"resume_from='mask' but missing prior output(s): "
+                                f"{wlconv_path if not os.path.exists(wlconv_path) else psfsub_path}"
+                            )
+                        print(f"  resuming (from 'mask') using {wlconv_path}, {psfsub_path}")
+                    else:
+                        # 1. air-to-vacuum wavelength correction
+                        cube_dirname = os.path.dirname(cubepath) + '/'
+                        wlconv_path = convert_wl_main(cube_base, cube_dirname)
+                        wlconv_path = move_to(wlconv_path, DIR_WLCONV)
+                        set_exptime_header(wlconv_path, exptime)
 
-                    # 2. PSF subtraction, on the wavelength-corrected cube
-                    psfsub_path = psf_sub_main(wlconv_path, x, y, z)
-                    psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
-                    set_exptime_header(psfsub_path, exptime)
+                        # 2. PSF subtraction, on the wavelength-corrected cube
+                        psfsub_path = psf_sub_main(wlconv_path, x, y, z)
+                        psfsub_path = move_to(psfsub_path, DIR_PSFSUB)
+                        set_exptime_header(psfsub_path, exptime)
 
-                # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
-                # combined into one 3D mask and saved alongside the
-                # vacuum-wavelength cube -- make spectral mask  BEFORE PSF subtraction, and then spatial part AFTER PSF subtraction so the
-                # white-light image SExtractor sees, and the residual sky
-                # spectrum used for the spectral mask, are both unsubtracted but the spatial mask does not include original LARGE PSF
-                mask_path = build_mask_main(wlconv_path, psfcube=psfsub_path, sex_config=sex_config,
-                                             sex_binary=sex_binary)
+                    # 2b. spatial (SExtractor) + spectral (sky-residual) mask,
+                    # combined into one 3D mask and saved alongside the
+                    # vacuum-wavelength cube -- make spectral mask  BEFORE PSF subtraction, and then spatial part AFTER PSF subtraction so the
+                    # white-light image SExtractor sees, and the residual sky
+                    # spectrum used for the spectral mask, are both unsubtracted but the spatial mask does not include original LARGE PSF
+                    mask_path = build_mask_main(wlconv_path, psfcube=psfsub_path, sex_config=sex_config,
+                                                 sex_binary=sex_binary)
 
-                # 3. crop around the QSO, centered on observed [OII]
-                lam_obs = OII_REST * (1 + z)
-                dwave = (2 * vel_window_kms / C_KMS) * lam_obs
-                crop_path = crop_cube(x, y, psfsub_path, spatialcrop_pix, lam_obs, dwave)
-                crop_path = move_to(crop_path, DIR_CROP)
-                set_exptime_header(crop_path, exptime)
+                    # 3. crop around the QSO, centered on observed [OII]
+                    lam_obs = OII_REST * (1 + z)
+                    dwave = (2 * vel_window_kms / C_KMS) * lam_obs
+                    crop_path = crop_cube(x, y, psfsub_path, spatialcrop_pix, lam_obs, dwave)
+                    crop_path = move_to(crop_path, DIR_CROP)
+                    set_exptime_header(crop_path, exptime)
 
-                # 3b. crop the mask to the identical spatial/spectral window
-                mask_crop_path = crop_mask(x, y, mask_path, spatialcrop_pix, lam_obs, dwave)
-                mask_crop_path = move_to(mask_crop_path, DIR_CROP)
+                    # 3b. crop the mask to the identical spatial/spectral window
+                    mask_crop_path = crop_mask(x, y, mask_path, spatialcrop_pix, lam_obs, dwave)
+                    mask_crop_path = move_to(mask_crop_path, DIR_CROP)
 
                 # 4. spatial/spectral resample -> final product
                 final_path = resample_main(z, crop_path, pixscale)
