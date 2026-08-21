@@ -1,0 +1,206 @@
+diff --git a/catalog_from_scratch.py b/catalog_from_scratch.py
+new file mode 100644
+index 0000000..417da3f
+--- /dev/null
++++ b/catalog_from_scratch.py
+@@ -0,0 +1,93 @@
++"""
++Build a local pairs table (mainscript.py's `pairs_path`) from whatever cube
++files are actually present in `cube_dir` right now -- decoupled from any one
++download_sample.py run's --n-fields/--max-gb selection.
++
++Why this exists: mainscript.py only processes a cube if it has a row in
++`pairs_path` (Name, cube_filename, exptime). download_sample.py's own
++pairs_local table only lists the cubes it queued in that ONE run, so if you
++download over several separate sessions, the processing step only ever sees
++the most recent batch -- everything downloaded earlier gets silently
++dropped.
++
++This script instead scans `cube_dir` for every '<dp_id>.fits' cube on disk,
++looks each dp_id up in the FULL (unbudgeted) crossmatch table written once
++by build_sample.py -- muse_x_milliquas_pairs.fits -- to recover its source
++Name and exptime, and writes a pairs table covering everything actually
++downloaded so far, regardless of which download_sample.py run fetched it or
++when.
++
++Usage (the "download now, process later" two-step workflow):
++
++    # 1. download some cubes -- repeatable across separate sessions, each
++    #    run adds to scratch/ without disturbing what's already there
++    python download_sample.py
++
++    # ... pause here. come back later, download more if you want ...
++
++    # 2. build a catalog of EVERY cube currently in scratch/
++    python catalog_from_scratch.py
++
++    # 3. run wavelength-conversion / PSF-sub / crop / resample on all of it
++    python mainscript.py --pairs-path muse_x_milliquas_pairs_local.fits
++
++Or do steps 2+3 together with: python run_pipeline.py --catalog-from-scratch
++"""
++
++import argparse
++import glob
++import os
++
++from astropy.table import Table
++
++
++def build_catalog(cube_dir, full_pairs_path, out_path):
++    """(Name, cube_filename, exptime) for every '<dp_id>.fits' cube found in
++    `cube_dir`, looked up against the full crossmatch table. Returns
++    `out_path`."""
++    full_pairs = Table.read(full_pairs_path)
++
++    dp_id_to_name, dp_id_to_exptime = {}, {}
++    for row in full_pairs:
++        dp_id = str(row['dp_id'])
++        if dp_id not in dp_id_to_name:
++            dp_id_to_name[dp_id] = str(row['Name'])
++            dp_id_to_exptime[dp_id] = float(row['t_exptime'])
++
++    cube_paths = sorted(glob.glob(os.path.join(cube_dir, '*.fits')))
++
++    rows, skipped = [], []
++    for path in cube_paths:
++        cube_filename = os.path.basename(path)
++        dp_id = os.path.splitext(cube_filename)[0]
++        if dp_id not in dp_id_to_name:
++            skipped.append(cube_filename)
++            continue
++        rows.append((dp_id_to_name[dp_id], cube_filename, dp_id_to_exptime[dp_id]))
++
++    table = Table(rows=rows, names=('Name', 'cube_filename', 'exptime'))
++    table.write(out_path, overwrite=True)
++
++    print(f"found {len(cube_paths)} cube(s) in {cube_dir!r}")
++    print(f"-> {len(rows)} matched to a source, written to {out_path!r}")
++    if skipped:
++        print(f"! {len(skipped)} cube(s) in {cube_dir!r} had no dp_id match in "
++              f"{full_pairs_path!r}, skipped: {skipped}")
++
++    return out_path
++
++
++if __name__ == '__main__':
++    p = argparse.ArgumentParser(
++        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    p.add_argument('--cube-dir', default='./scratch/',
++                    help="folder to scan for downloaded cubes (default: ./scratch/)")
++    p.add_argument('--full-pairs', default='muse_x_milliquas_pairs.fits',
++                    help="the unbudgeted crossmatch table from build_sample.py "
++                         "(NOT muse_x_milliquas_pairs_local.fits)")
++    p.add_argument('--out', default='muse_x_milliquas_pairs_local.fits',
++                    help="output pairs table -- pass this as --pairs-path to "
++                         "mainscript.py")
++    args = p.parse_args()
++
++    build_catalog(args.cube_dir, args.full_pairs, args.out)
+diff --git a/mainscript.py b/mainscript.py
+index fc5d1fa..0c17a1f 100644
+--- a/mainscript.py
++++ b/mainscript.py
+@@ -193,4 +193,32 @@ def main(sample_path='muse_x_milliquas_sample.fits',
+ 
+ 
+ if __name__ == '__main__':
+-    main()
++    import argparse
++
++    p = argparse.ArgumentParser(
++        description="Run wavelength-conversion / PSF-sub / mask / crop / "
++                     "resample on every cube listed in --pairs-path.")
++    p.add_argument('--sample-path', default='muse_x_milliquas_sample.fits')
++    p.add_argument('--pairs-path', default='muse_x_milliquas_pairs_local.fits',
++                    help="e.g. the output of catalog_from_scratch.py, to "
++                         "process everything currently downloaded")
++    p.add_argument('--cube-dir', default='./scratch/')
++    p.add_argument('--spatialcrop-pix', type=int, default=200)
++    p.add_argument('--vel-window-kms', type=float, default=5000)
++    p.add_argument('--pixscale', type=float, default=0.2)
++    p.add_argument('--sex-config',
++                    default='/Users/charishall/CASSI_26/SExtractor_Files/wl_eso.sex')
++    p.add_argument('--sex-binary', default='/opt/homebrew/bin/sex')
++    p.add_argument('--resume-from', default='download',
++                    choices=['download', 'mask', 'resample'],
++                    help="'mask' skips convert_wl/psf_sub and resumes at "
++                         "mask/crop/resample using their already-produced "
++                         "outputs; 'resample' additionally reuses existing "
++                         "mask/crop (default: 'download', runs every stage)")
++    args = p.parse_args()
++
++    main(sample_path=args.sample_path, pairs_path=args.pairs_path,
++         cube_dir=args.cube_dir, spatialcrop_pix=args.spatialcrop_pix,
++         vel_window_kms=args.vel_window_kms, pixscale=args.pixscale,
++         sex_config=args.sex_config, sex_binary=args.sex_binary,
++         resume_from=args.resume_from)
+diff --git a/run_pipeline.py b/run_pipeline.py
+index cdd36dd..da7e148 100644
+--- a/run_pipeline.py
++++ b/run_pipeline.py
+@@ -18,12 +18,36 @@ Usage:
+ import argparse
+ 
+ import build_sample
++import catalog_from_scratch
+ import download_sample
+ import mainscript
+ 
+ 
+ def run(download: bool, n_fields: int, max_gb: float, sex_config: str,
+-        sex_binary: str, field_indices=None, resume_from='download'):
++        sex_binary: str, field_indices=None, resume_from='download',
++        catalog_from_scratch_mode=False, cube_dir='./scratch/',
++        full_pairs='muse_x_milliquas_pairs.fits'):
++    if catalog_from_scratch_mode:
++        # Skip build_sample/download_sample entirely: this is the "I already
++        # downloaded cubes (maybe over several separate sessions) and just
++        # want to process everything sitting in cube_dir" path. Requires
++        # muse_x_milliquas_pairs.fits and muse_x_milliquas_sample.fits to
++        # already exist from a prior build_sample.py run.
++        print("=== catalog-from-scratch: skipping build_sample/download_sample ===")
++        pairs_local_path = catalog_from_scratch.build_catalog(
++            cube_dir, full_pairs, 'muse_x_milliquas_pairs_local.fits')
++
++        print("\n=== processing everything in the catalog ===")
++        mainscript.main(
++            sample_path='muse_x_milliquas_sample.fits',
++            pairs_path=pairs_local_path,
++            cube_dir=cube_dir,
++            sex_config=sex_config,
++            sex_binary=sex_binary,
++            resume_from=resume_from,
++        )
++        return
++
+     # 1. crossmatch -> muse_x_milliquas_{pairs,fields,sample}.fits/.csv
+     print("=== 1/3: build_sample ===")
+     fields, pairs, sample = build_sample.main()
+@@ -82,10 +106,25 @@ if __name__ == "__main__":
+                          "crop/resample using their already-produced outputs " 
+                          "'resample' additionally reuses existing mask/crop "
+                          "(default: 'download', runs every stage)")
++    p.add_argument("--catalog-from-scratch", action="store_true",
++                    help="skip build_sample/download_sample entirely; build "
++                         "the pairs table from every cube already sitting in "
++                         "--cube-dir and process all of it. Use this to pause "
++                         "after downloading (possibly over several separate "
++                         "download_sample.py runs) and process everything "
++                         "downloaded so far in one go.")
++    p.add_argument("--cube-dir", type=str, default="./scratch/",
++                    help="folder to scan when --catalog-from-scratch is set")
++    p.add_argument("--full-pairs", type=str, default="muse_x_milliquas_pairs.fits",
++                    help="unbudgeted crossmatch table (from build_sample.py) "
++                         "used to look up Name/exptime when "
++                         "--catalog-from-scratch is set")
+     args = p.parse_args()
+     
+     print("run-pipeline successful!")
+           
+     run(download=args.download, n_fields=args.n_fields, max_gb=args.max_gb,
+         sex_config=args.sex_config, sex_binary=args.sex_binary,
+-        field_indices=args.field_indices, resume_from=args.resume_from)
++        field_indices=args.field_indices, resume_from=args.resume_from,
++        catalog_from_scratch_mode=args.catalog_from_scratch,
++        cube_dir=args.cube_dir, full_pairs=args.full_pairs)
