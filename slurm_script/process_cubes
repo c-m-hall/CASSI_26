@@ -13,6 +13,7 @@ conda activate /carnegie/scidata/groups/muse_stacking/conda_envs/cassi
 
 cd /carnegie/scidata/groups/muse_stacking/CASSI_26
 
-python run_pipeline.py --download --field-indices $(seq 2 30) \
+
+python run_pipeline.py --catalog-from-scratch
     --max-gb 1000 \
     --sex-config /carnegie/scidata/groups/muse_stacking/CASSI_26/wl_eso.sex
